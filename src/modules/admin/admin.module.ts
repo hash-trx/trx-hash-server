@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AdminAdminsController } from './admin-admins.controller';
 import { AdminAuthController } from './admin-auth.controller';
+import { AdminUiController } from './admin-ui.controller';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminMarketController } from './admin-market.controller';
 import { AdminService } from './admin.service';
@@ -19,6 +20,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
     }),
   ],
   controllers: [
+    AdminUiController,
     AdminAuthController,
     AdminUsersController,
     AdminStrategiesController,

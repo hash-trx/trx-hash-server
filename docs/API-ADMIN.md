@@ -1,5 +1,13 @@
 # 管理后台 HTTP API
 
+## 浏览器操作页
+
+部署后访问：**`http://<你的域名或IP>:<PORT>/admin`** 或 **`/admin/login`**（同一单页）。
+
+静态文件：`public/admin/index.html`（登录、用户/策略/市场/管理员 CRUD）。
+
+---
+
 - **Base URL**：与 Nest 服务一致，例如 `http://127.0.0.1:3003`
 - **鉴权**：除 `POST /admin/login`、`POST /admin/bootstrap` 外，均需请求头  
   `Authorization: Bearer <管理员 JWT>`  

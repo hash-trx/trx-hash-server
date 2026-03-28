@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TRX Hash 管理后台</title>
+  <style>
+    :root { --bg: #0f1419; --card: #1a2332; --border: #2d3a4d; --text: #e6edf3; --muted: #8b9cb3; --accent: #3b82f6; --danger: #ef4444; --ok: #22c55e; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    a { color: var(--accent); }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    h2 { font-size: 1rem; color: var(--muted); font-weight: 600; margin: 0 0 12px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    input, select, textarea { width: 100%; max-width: 360px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); background: #0d1117; color: var(--text); margin-bottom: 12px; }
+    button { cursor: pointer; padding: 8px 14px; border-radius: 6px; border: none; background: var(--accent); color: #fff; font-weight: 500; }
+    button.secondary { background: #334155; }
+    button.danger { background: var(--danger); }
+    button.small { padding: 4px 10px; font-size: 12px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tabs button { background: #334155; }
+    .tabs button.active { background: var(--accent); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+    th { background: #252f3f; }
+    .hidden { display: none !important; }
+    .err { color: var(--danger); font-size: 13px; }
+    .ok { color: var(--ok); font-size: 13px; }
+    pre { background: #0d1117; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; max-height: 200px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    code { font-size: 12px; color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="loginPanel" class="card">
+      <h1>TRX Hash 管理后台</h1>
+      <p style="color:var(--muted);font-size:14px;">登录后管理用户、策略、市场庄家与管理员账号。</p>
+      <div class="row">
+        <div style="flex:1;min-width:200px;">
+          <label>邮箱</label>
+          <input id="loginEmail" type="email" autocomplete="username" />
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <label>密码</label>
+          <input id="loginPass" type="password" autocomplete="current-password" />
+        </div>
+      </div>
+      <button type="button" onclick="doLogin()">登录</button>
+      <p id="loginErr" class="err"></p>
+      <details style="margin-top:16px;">
+        <summary style="cursor:pointer;color:var(--muted);">首次创建管理员（需服务器已配置 ADMIN_BOOTSTRAP_SECRET）</summary>
+        <div style="margin-top:12px;">
+          <label>邮箱</label>
+          <input id="bootEmail" type="email" />
+          <label>密码（≥8位）</label>
+          <input id="bootPass" type="password" />
+          <label>Bootstrap Secret</label>
+          <input id="bootSecret" type="password" placeholder="与 .env 中 ADMIN_BOOTSTRAP_SECRET 一致" />
+          <button type="button" class="secondary" onclick="doBootstrap()">创建首个管理员</button>
+          <p id="bootErr" class="err"></p>
+        </div>
+      </details>
+    </div>
+
+    <div id="appPanel" class="hidden">
+      <div class="topbar card">
+        <div><strong>已登录</strong> <span id="who" class="muted"></span></div>
+        <button type="button" class="secondary" onclick="logout()">退出</button>
+      </div>
+      <div class="tabs">
+        <button type="button" class="active" data-tab="users" onclick="switchTab('users')">用户</button>
+        <button type="button" data-tab="strategies" onclick="switchTab('strategies')">策略</button>
+        <button type="button" data-tab="market" onclick="switchTab('market')">市场</button>
+        <button type="button" data-tab="admins" onclick="switchTab('admins')">管理员</button>
+      </div>
+
+      <div id="tab-users" class="card">
+        <h2>用户列表</h2>
+        <div class="row">
+          <input id="userQ" placeholder="搜索邮箱" style="max-width:200px;" />
+          <button type="button" onclick="loadUsers()">刷新</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>ID</th><th>邮箱</th><th>到期</th><th>盈亏</th><th>投注次数</th><th>投注额</th><th>操作</th></tr></thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+        <p id="userEditHint" class="muted" style="font-size:12px;">点击「编辑」在下方修改；重置密码仅填新密码。</p>
+        <div id="userEdit" class="hidden" style="margin-top:12px;">
+          <h2>编辑用户 #<span id="editUid"></span></h2>
+          <label>邮箱</label>
+          <input id="ueEmail" />
+          <label>到期时间 (ISO，留空表示清空)</label>
+          <input id="ueExpire" placeholder="2026-12-31T00:00:00.000Z" />
+          <label>盈亏 pnlTotal</label>
+          <input id="uePnl" type="number" step="any" />
+          <label>投注次数</label>
+          <input id="ueBetCnt" type="number" />
+          <label>投注金额</label>
+          <input id="ueBetAmt" type="number" step="any" />
+          <div class="row">
+            <button type="button" onclick="saveUser()">保存</button>
+            <button type="button" class="secondary" onclick="cancelUserEdit()">取消</button>
+          </div>
+          <label>重置密码（≥8位）</label>
+          <input id="ueNewPass" type="password" />
+          <button type="button" class="danger" onclick="resetUserPass()">重置密码</button>
+        </div>
+      </div>
+
+      <div id="tab-strategies" class="card hidden">
+        <h2>策略</h2>
+        <button type="button" onclick="loadStrategies()">刷新</button>
+        <table style="margin-top:16px;">
+          <thead><tr><th>ID</th><th>名称</th><th>价格</th><th>热</th><th>scriptUrl</th><th>操作</th></tr></thead>
+          <tbody id="stratRows"></tbody>
+        </table>
+        <h2 style="margin-top:20px;">新建策略</h2>
+        <label>ID（整数）</label>
+        <input id="nsId" type="number" />
+        <label>名称</label>
+        <input id="nsName" />
+        <label>价格</label>
+        <input id="nsPrice" type="number" step="any" />
+        <label>scriptUrl</label>
+        <input id="nsUrl" />
+        <label><input type="checkbox" id="nsHot" /> 热门</label>
+        <button type="button" onclick="createStrategy()">创建</button>
+        <div id="stratEdit" class="hidden" style="margin-top:16px;">
+          <h2>编辑策略 #<span id="sid"></span></h2>
+          <label>名称</label>
+          <input id="esName" />
+          <label>价格</label>
+          <input id="esPrice" type="number" step="any" />
+          <label>scriptUrl</label>
+          <input id="esUrl" />
+          <label><input type="checkbox" id="esHot" /> 热门</label>
+          <div class="row">
+            <button type="button" onclick="saveStrategy()">保存</button>
+            <button type="button" class="danger" onclick="deleteStrategy()">删除</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-market" class="card hidden">
+        <h2>市场庄家</h2>
+        <button type="button" onclick="loadBankers()">刷新</button>
+        <table style="margin-top:16px;">
+          <thead><tr><th>ID</th><th>名称</th><th>地址</th><th>赔率</th><th>排序</th><th>操作</th></tr></thead>
+          <tbody id="bankRows"></tbody>
+        </table>
+        <h2 style="margin-top:20px;">新建庄家</h2>
+        <label>名称</label>
+        <input id="nbName" />
+        <label>地址</label>
+        <input id="nbAddr" />
+        <label>赔率</label>
+        <input id="nbOdds" type="number" step="any" />
+        <label>反点</label>
+        <input id="nbRebate" type="number" step="any" />
+        <label>排序</label>
+        <input id="nbSort" type="number" />
+        <label>备注</label>
+        <input id="nbNote" />
+        <button type="button" onclick="createBanker()">创建</button>
+        <div id="bankEdit" class="hidden" style="margin-top:16px;">
+          <h2>编辑庄家 #<span id="bid"></span></h2>
+          <label>名称</label>
+          <input id="ebName" />
+          <label>地址</label>
+          <input id="ebAddr" />
+          <label>赔率</label>
+          <input id="ebOdds" type="number" step="any" />
+          <label>反点</label>
+          <input id="ebRebate" type="number" step="any" />
+          <label>排序</label>
+          <input id="ebSort" type="number" />
+          <label>备注</label>
+          <input id="ebNote" />
+          <div class="row">
+            <button type="button" onclick="saveBanker()">保存</button>
+            <button type="button" class="danger" onclick="deleteBanker()">删除</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-admins" class="card hidden">
+        <h2>管理员</h2>
+        <button type="button" onclick="loadAdmins()">刷新</button>
+        <table style="margin-top:16px;">
+          <thead><tr><th>ID</th><th>邮箱</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody id="admRows"></tbody>
+        </table>
+        <h2 style="margin-top:20px;">新建管理员</h2>
+        <label>邮箱</label>
+        <input id="naEmail" />
+        <label>密码</label>
+        <input id="naPass" type="password" />
+        <button type="button" onclick="createAdmin()">创建</button>
+        <div id="admEdit" class="hidden" style="margin-top:16px;">
+          <h2>编辑管理员 #<span id="aid"></span></h2>
+          <label>邮箱</label>
+          <input id="eaEmail" />
+          <label>新密码（留空不改）</label>
+          <input id="eaPass" type="password" />
+          <div class="row">
+            <button type="button" onclick="saveAdmin()">保存</button>
+            <button type="button" class="danger" onclick="deleteAdmin()">删除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN_KEY = 'trx_hash_admin_token';
+    const ADMIN_INFO = 'trx_hash_admin_info';
+
+    function token() { return sessionStorage.getItem(TOKEN_KEY); }
+    function authHeaders() {
+      const t = token();
+      return t ? { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+    }
+
+    async function api(path, opts = {}) {
+      const r = await fetch(path, { ...opts, headers: { ...authHeaders(), ...opts.headers } });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 401) { logout(); throw new Error('登录已过期'); }
+      return j;
+    }
+
+    function showLogin() {
+      document.getElementById('loginPanel').classList.remove('hidden');
+      document.getElementById('appPanel').classList.add('hidden');
+    }
+    function showApp() {
+      document.getElementById('loginPanel').classList.add('hidden');
+      document.getElementById('appPanel').classList.remove('hidden');
+      const info = JSON.parse(sessionStorage.getItem(ADMIN_INFO) || '{}');
+      document.getElementById('who').textContent = info.email || '';
+    }
+
+    async function doLogin() {
+      document.getElementById('loginErr').textContent = '';
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPass').value;
+      const r = await fetch('/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const j = await r.json();
+      if (!j.ok) {
+        document.getElementById('loginErr').textContent = j.error || '登录失败';
+        return;
+      }
+      sessionStorage.setItem(TOKEN_KEY, j.token);
+      sessionStorage.setItem(ADMIN_INFO, JSON.stringify(j.admin));
+      showApp();
+      loadUsers();
+    }
+
+    async function doBootstrap() {
+      document.getElementById('bootErr').textContent = '';
+      const email = document.getElementById('bootEmail').value.trim();
+      const password = document.getElementById('bootPass').value;
+      const secret = document.getElementById('bootSecret').value;
+      const r = await fetch('/admin/bootstrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, secret }),
+      });
+      const j = await r.json();
+      if (!j.ok) {
+        document.getElementById('bootErr').textContent = j.error || '创建失败';
+        return;
+      }
+      sessionStorage.setItem(TOKEN_KEY, j.token);
+      sessionStorage.setItem(ADMIN_INFO, JSON.stringify(j.admin));
+      showApp();
+      loadUsers();
+    }
+
+    function logout() {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(ADMIN_INFO);
+      showLogin();
+    }
+
+    function switchTab(name) {
+      document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      ['users', 'strategies', 'market', 'admins'].forEach(t => {
+        document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+      });
+      if (name === 'users') loadUsers();
+      if (name === 'strategies') loadStrategies();
+      if (name === 'market') loadBankers();
+      if (name === 'admins') loadAdmins();
+    }
+
+    let editingUserId = null;
+    async function loadUsers() {
+      const q = document.getElementById('userQ').value.trim();
+      const qs = new URLSearchParams({ page: '1', pageSize: '50' });
+      if (q) qs.set('q', q);
+      const j = await api('/admin/users?' + qs.toString());
+      const tb = document.getElementById('userRows');
+      tb.innerHTML = '';
+      (j.items || []).forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + u.id + '</td><td>' + escapeHtml(u.email) + '</td><td>' + (u.subExpire || '-') + '</td><td>' + u.pnlTotal + '</td><td>' + u.betCountTotal + '</td><td>' + u.betAmountTotal + '</td><td><button class="small" onclick="editUser(' + u.id + ')">编辑</button></td>';
+        tb.appendChild(tr);
+      });
+    }
+    function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    async function editUser(id) {
+      editingUserId = id;
+      const j = await api('/admin/users/' + id);
+      const u = j.user;
+      document.getElementById('userEdit').classList.remove('hidden');
+      document.getElementById('editUid').textContent = id;
+      document.getElementById('ueEmail').value = u.email;
+      document.getElementById('ueExpire').value = u.subExpire || '';
+      document.getElementById('uePnl').value = u.pnlTotal;
+      document.getElementById('ueBetCnt').value = u.betCountTotal;
+      document.getElementById('ueBetAmt').value = u.betAmountTotal;
+      document.getElementById('ueNewPass').value = '';
+    }
+    function cancelUserEdit() {
+      editingUserId = null;
+      document.getElementById('userEdit').classList.add('hidden');
+    }
+    async function saveUser() {
+      if (!editingUserId) return;
+      const body = {
+        email: document.getElementById('ueEmail').value.trim(),
+        subExpire: document.getElementById('ueExpire').value.trim() || null,
+        pnlTotal: parseFloat(document.getElementById('uePnl').value),
+        betCountTotal: parseInt(document.getElementById('ueBetCnt').value, 10),
+        betAmountTotal: parseFloat(document.getElementById('ueBetAmt').value),
+      };
+      await api('/admin/users/' + editingUserId, { method: 'PATCH', body: JSON.stringify(body) });
+      alert('已保存');
+      loadUsers();
+    }
+    async function resetUserPass() {
+      if (!editingUserId) return;
+      const newPassword = document.getElementById('ueNewPass').value;
+      if (newPassword.length < 8) { alert('密码至少8位'); return; }
+      await api('/admin/users/' + editingUserId + '/reset-password', { method: 'POST', body: JSON.stringify({ newPassword }) });
+      alert('密码已重置');
+      document.getElementById('ueNewPass').value = '';
+    }
+
+    let editingStratId = null;
+    async function loadStrategies() {
+      const j = await api('/admin/strategies');
+      const tb = document.getElementById('stratRows');
+      tb.innerHTML = '';
+      (j.items || []).forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + s.id + '</td><td>' + escapeHtml(s.name) + '</td><td>' + s.price + '</td><td>' + (s.isHot ? '是' : '否') + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(s.scriptUrl) + '</td><td><button class="small" onclick="editStrat(' + s.id + ')">编辑</button></td>';
+        tb.appendChild(tr);
+      });
+    }
+    async function editStrat(id) {
+      editingStratId = id;
+      const j = await api('/admin/strategies');
+      const s = (j.items || []).find(x => x.id === id);
+      if (!s) return;
+      document.getElementById('stratEdit').classList.remove('hidden');
+      document.getElementById('sid').textContent = id;
+      document.getElementById('esName').value = s.name;
+      document.getElementById('esPrice').value = s.price;
+      document.getElementById('esUrl').value = s.scriptUrl;
+      document.getElementById('esHot').checked = !!s.isHot;
+    }
+    async function createStrategy() {
+      const body = {
+        id: parseInt(document.getElementById('nsId').value, 10),
+        name: document.getElementById('nsName').value.trim(),
+        price: parseFloat(document.getElementById('nsPrice').value),
+        scriptUrl: document.getElementById('nsUrl').value.trim(),
+        isHot: document.getElementById('nsHot').checked,
+      };
+      await api('/admin/strategies', { method: 'POST', body: JSON.stringify(body) });
+      alert('已创建');
+      loadStrategies();
+    }
+    async function saveStrategy() {
+      if (!editingStratId) return;
+      const body = {
+        name: document.getElementById('esName').value.trim(),
+        price: parseFloat(document.getElementById('esPrice').value),
+        scriptUrl: document.getElementById('esUrl').value.trim(),
+        isHot: document.getElementById('esHot').checked,
+      };
+      await api('/admin/strategies/' + editingStratId, { method: 'PATCH', body: JSON.stringify(body) });
+      alert('已保存');
+      loadStrategies();
+    }
+    async function deleteStrategy() {
+      if (!editingStratId) return;
+      if (!confirm('确定删除策略 ' + editingStratId + '？')) return;
+      await api('/admin/strategies/' + editingStratId, { method: 'DELETE' });
+      document.getElementById('stratEdit').classList.add('hidden');
+      editingStratId = null;
+      loadStrategies();
+    }
+
+    let editingBankId = null;
+    async function loadBankers() {
+      const j = await api('/admin/market-bankers');
+      const tb = document.getElementById('bankRows');
+      tb.innerHTML = '';
+      (j.items || []).forEach(b => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + b.id + '</td><td>' + escapeHtml(b.name) + '</td><td style="max-width:200px;word-break:break-all;">' + escapeHtml(b.address) + '</td><td>' + b.odds + '</td><td>' + b.sortOrder + '</td><td><button class="small" onclick="editBank(' + b.id + ')">编辑</button></td>';
+        tb.appendChild(tr);
+      });
+    }
+    async function editBank(id) {
+      editingBankId = id;
+      const j = await api('/admin/market-bankers');
+      const b = (j.items || []).find(x => x.id === id);
+      if (!b) return;
+      document.getElementById('bankEdit').classList.remove('hidden');
+      document.getElementById('bid').textContent = id;
+      document.getElementById('ebName').value = b.name;
+      document.getElementById('ebAddr').value = b.address;
+      document.getElementById('ebOdds').value = b.odds;
+      document.getElementById('ebRebate').value = b.rebate;
+      document.getElementById('ebSort').value = b.sortOrder;
+      document.getElementById('ebNote').value = b.note || '';
+    }
+    async function createBanker() {
+      const body = {
+        name: document.getElementById('nbName').value.trim(),
+        address: document.getElementById('nbAddr').value.trim(),
+        odds: parseFloat(document.getElementById('nbOdds').value),
+        rebate: parseFloat(document.getElementById('nbRebate').value || '0'),
+        sortOrder: parseInt(document.getElementById('nbSort').value || '0', 10),
+        note: document.getElementById('nbNote').value.trim() || undefined,
+      };
+      await api('/admin/market-bankers', { method: 'POST', body: JSON.stringify(body) });
+      alert('已创建');
+      loadBankers();
+    }
+    async function saveBanker() {
+      if (!editingBankId) return;
+      const body = {
+        name: document.getElementById('ebName').value.trim(),
+        address: document.getElementById('ebAddr').value.trim(),
+        odds: parseFloat(document.getElementById('ebOdds').value),
+        rebate: parseFloat(document.getElementById('ebRebate').value),
+        sortOrder: parseInt(document.getElementById('ebSort').value, 10),
+        note: document.getElementById('ebNote').value.trim() || null,
+      };
+      await api('/admin/market-bankers/' + editingBankId, { method: 'PATCH', body: JSON.stringify(body) });
+      alert('已保存');
+      loadBankers();
+    }
+    async function deleteBanker() {
+      if (!editingBankId) return;
+      if (!confirm('确定删除？')) return;
+      await api('/admin/market-bankers/' + editingBankId, { method: 'DELETE' });
+      document.getElementById('bankEdit').classList.add('hidden');
+      editingBankId = null;
+      loadBankers();
+    }
+
+    let editingAdminId = null;
+    async function loadAdmins() {
+      const j = await api('/admin/admins');
+      const me = JSON.parse(sessionStorage.getItem(ADMIN_INFO) || '{}');
+      const tb = document.getElementById('admRows');
+      tb.innerHTML = '';
+      (j.items || []).forEach(a => {
+        const tr = document.createElement('tr');
+        const canDel = a.id !== me.id;
+        tr.innerHTML = '<td>' + a.id + '</td><td>' + escapeHtml(a.email) + '</td><td>' + a.createdAt + '</td><td><button class="small" onclick="editAdm(' + a.id + ')">编辑</button></td>';
+        tb.appendChild(tr);
+      });
+    }
+    async function editAdm(id) {
+      editingAdminId = id;
+      const j = await api('/admin/admins');
+      const a = (j.items || []).find(x => x.id === id);
+      if (!a) return;
+      document.getElementById('admEdit').classList.remove('hidden');
+      document.getElementById('aid').textContent = id;
+      document.getElementById('eaEmail').value = a.email;
+      document.getElementById('eaPass').value = '';
+    }
+    async function createAdmin() {
+      const body = {
+        email: document.getElementById('naEmail').value.trim(),
+        password: document.getElementById('naPass').value,
+      };
+      await api('/admin/admins', { method: 'POST', body: JSON.stringify(body) });
+      alert('已创建');
+      loadAdmins();
+    }
+    async function saveAdmin() {
+      if (!editingAdminId) return;
+      const body = { email: document.getElementById('eaEmail').value.trim() };
+      const p = document.getElementById('eaPass').value;
+      if (p) body.password = p;
+      await api('/admin/admins/' + editingAdminId, { method: 'PATCH', body: JSON.stringify(body) });
+      alert('已保存');
+      loadAdmins();
+    }
+    async function deleteAdmin() {
+      if (!editingAdminId) return;
+      if (!confirm('确定删除该管理员？')) return;
+      await api('/admin/admins/' + editingAdminId, { method: 'DELETE' });
+      document.getElementById('admEdit').classList.add('hidden');
+      editingAdminId = null;
+      loadAdmins();
+    }
+
+    (function init() {
+      if (token()) {
+        showApp();
+        loadUsers();
+      } else {
+        showLogin();
+      }
+    })();
+  </script>
+</body>
+</html>
