@@ -179,7 +179,7 @@ export class AuthService {
     };
   }
 
-  /** 从 TransferContract.parameter.value.data 解析 UTF-8 备注（与 CronService 一致） */
+  /** 从 hex 解析 UTF-8 备注 */
   private parseTrxTransferMemo(data: string | undefined): string {
     if (typeof data !== 'string' || data.length === 0) return '';
     try {
@@ -187,6 +187,18 @@ export class AuthService {
     } catch {
       return '';
     }
+  }
+
+  /**
+   * TRX 转账备注可能出现在两处（钱包版本不同）：
+   * - `parameter.value.data`（旧）
+   * - `raw_data.data`（新，与 TronScan「备注」常见展示一致）
+   */
+  private resolveTransferMemo(tx: AnyTx, valueData: string | undefined): string {
+    const a = this.parseTrxTransferMemo(valueData);
+    if (a) return a;
+    const rd = (tx as { raw_data?: { data?: string } }).raw_data;
+    return this.parseTrxTransferMemo(rd?.data);
   }
 
   /**
@@ -248,7 +260,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return { ok: false, error: '用户不存在' };
 
-    const memoOnChain = this.parseTrxTransferMemo(v.data).toLowerCase();
+    const memoOnChain = this.resolveTransferMemo(tx, v.data as string | undefined).toLowerCase();
     const emailExpected = (user.email || '').trim().toLowerCase();
     if (!memoOnChain) {
       return {

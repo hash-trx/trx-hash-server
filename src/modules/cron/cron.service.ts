@@ -78,6 +78,14 @@ export class CronService {
         memo = '';
       }
     }
+    if (!memo && tx.raw_data && typeof (tx.raw_data as { data?: string }).data === 'string') {
+      try {
+        const h = (tx.raw_data as { data: string }).data;
+        memo = Buffer.from(h, 'hex').toString('utf8').replace(/\0/g, '').trim();
+      } catch {
+        //
+      }
+    }
     return { txid, ts, amount, toAddress: v.to_address, memo };
   }
 
