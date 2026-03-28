@@ -77,4 +77,8 @@
 
 ## 盈亏同步（客户端）
 
-`POST /sync/pnl-summary` 现支持在 body 中增加 **`totalBetAmount`**（当日投注金额合计），与 HMAC 校验一致；旧版仅四段 payload 的校验仍兼容。
+`POST /sync/pnl-summary` 现支持在 body 中增加 **`totalBetAmount`**（当日投注金额合计），HMAC 为五段：  
+`userId|date|totalPnL|betCount|totalBetAmount`。  
+若使用本仓库 **Electron 客户端**，请同步更新 `apps/electron-client/src/main/pnl-sync.service.ts`（已改为五段校验）。
+
+旧版仅四段 payload 的校验**仍兼容**（不传 `totalBetAmount` 时服务端按 0 累计投注额）。
