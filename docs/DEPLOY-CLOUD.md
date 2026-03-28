@@ -31,6 +31,7 @@ nano .env
 - `JWT_SECRET`、`PNL_SYNC_SECRET`（生产请用长随机串）
 - `SUB_ADDRESS`（激活收款 TRON 地址，若用该功能）
 - `TRONGRID_API_KEYS`（代广播功能，逗号分隔多个 Key）
+- `ADMIN_BOOTSTRAP_SECRET`（**首次**创建后台管理员时用，见 `docs/API-ADMIN.md`；创建后可删或留空）
 
 **不要**在 Docker 部署里再手写一条与容器内冲突的 `DATABASE_URL`；compose 已用 `POSTGRES_*` 自动生成指向服务名 `postgres` 的连接串。
 

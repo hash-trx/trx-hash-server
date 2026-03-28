@@ -17,12 +17,14 @@ export class SyncController {
     @Body('totalPnL') totalPnL: number,
     @Body('betCount') betCount: number,
     @Body('checksum') checksum: string,
+    @Body('totalBetAmount') totalBetAmount?: number,
   ) {
     if (!userId || !date || !checksum) {
       return { ok: false, error: 'Missing required fields' };
     }
     const total = typeof totalPnL === 'number' ? totalPnL : 0;
     const count = typeof betCount === 'number' ? betCount : 0;
-    return this.sync.syncPnL(userId, date, total, count, checksum);
+    const betAmt = typeof totalBetAmount === 'number' ? totalBetAmount : undefined;
+    return this.sync.syncPnL(userId, date, total, count, checksum, betAmt);
   }
 }

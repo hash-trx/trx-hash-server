@@ -9,6 +9,7 @@ import { SyncModule } from './modules/sync/sync.module';
 import { CronModule } from './modules/cron/cron.module';
 import { BlockHashModule } from './modules/block-hash/block-hash.module';
 import { TronModule } from './modules/tron/tron.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TronModule } from './modules/tron/tron.module';
     CronModule,
     BlockHashModule,
     TronModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -31,6 +31,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-trx_hash}
       PORT: 3003
       TRON_FULL_HOST: ${TRON_FULL_HOST:-http://3.225.171.164:8090}
+      ADMIN_BOOTSTRAP_SECRET: ${ADMIN_BOOTSTRAP_SECRET:-}
       JWT_SECRET: ${JWT_SECRET:-trx-hash-dev-secret}
       PNL_SYNC_SECRET: ${PNL_SYNC_SECRET:-trx-hash-pnl-sync-dev}
       SUB_ADDRESS: ${SUB_ADDRESS:-}

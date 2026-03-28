@@ -11,12 +11,27 @@ datasource db {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  email        String    @unique
-  passwordHash String? // scrypt 哈希，仅注册用户有值；登录必须校验
-  subExpire    DateTime?
-  pnlTotal     Float     @default(0)
-  createdAt    DateTime  @default(now())
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  passwordHash    String? // scrypt 哈希，仅注册用户有值；登录必须校验
+  subExpire       DateTime?
+  pnlTotal        Float     @default(0)
+  /// 累计投注次数（客户端同步累加）
+  betCountTotal   Int       @default(0) @map("bet_count_total")
+  /// 累计投注金额 TRX（客户端同步累加）
+  betAmountTotal  Float     @default(0) @map("bet_amount_total")
+  createdAt       DateTime  @default(now())
+}
+
+/// 后台管理员（与前台 User 分离）
+model Admin {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin")
 }
 
 model StrategyMarket {
