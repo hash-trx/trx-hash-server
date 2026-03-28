@@ -9,10 +9,21 @@ import { hashPassword, verifyPassword } from './password.util';
 
 const DEFAULT_FULL_HOST = 'http://3.225.171.164:8090';
 
+function pickFirstTronGridKey(): string | undefined {
+  const raw = process.env.TRONGRID_API_KEYS ?? '';
+  const keys = raw
+    .split(/[,;\n\r]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  return keys[0];
+}
+
 export interface LoginResult {
   userId: string;
   token: string;
   subExpire: Date | null;
+  /** 与服务器中继同源，供 Electron 连接 TronGrid 组交易（需带 TRON-PRO-API-KEY） */
+  tronGridApiKey?: string;
 }
 
 type TronGridTxById = {
@@ -83,10 +94,12 @@ export class AuthService {
 
     const payload = { sub: String(user.id), email: user.email };
     const token = this.jwt.sign(payload);
+    const tronKey = pickFirstTronGridKey();
     return {
       userId: String(user.id),
       token,
       subExpire: user.subExpire,
+      ...(tronKey ? { tronGridApiKey: tronKey } : {}),
     };
   }
 
@@ -107,6 +120,7 @@ export class AuthService {
     isExpired: boolean;
     serverTime: number;
     subExpire: Date | null;
+    tronGridApiKey?: string;
   } | null> {
     try {
       const payload = this.jwt.verify(token) as { sub: string; email: string };
@@ -117,12 +131,14 @@ export class AuthService {
 
       const now = new Date();
       const isExpired = user.subExpire ? user.subExpire < now : true;
+      const tronKey = pickFirstTronGridKey();
 
       return {
         userId: String(user.id),
         isExpired,
         serverTime: now.getTime(),
         subExpire: user.subExpire,
+        ...(tronKey ? { tronGridApiKey: tronKey } : {}),
       };
     } catch {
       return null;
