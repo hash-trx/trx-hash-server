@@ -250,11 +250,17 @@ export class AuthService {
 
     const memoOnChain = this.parseTrxTransferMemo(v.data).toLowerCase();
     const emailExpected = (user.email || '').trim().toLowerCase();
-    if (!memoOnChain || memoOnChain !== emailExpected) {
+    if (!memoOnChain) {
       return {
         ok: false,
         error:
-          '转账备注（Memo）必须与当前登录邮箱完全一致，否则无法验证这是你本人付款。他人即使复制你的 txid 也无法激活到别的账号。请检查钱包里该笔转账是否填写了 Memo。',
+          '链上该笔 TRX 转账的「备注」字段为空（未写入 data）。请在 TronScan 打开该 txid，查看 Raw Data 里是否有备注；部分钱包界面有「备注」但未写入主网转账，请换 TronLink 等钱包重新转 1 TRX 并填写与登录邮箱完全一致的 Memo。',
+      };
+    }
+    if (memoOnChain !== emailExpected) {
+      return {
+        ok: false,
+        error: `Memo 与当前登录邮箱不一致。链上备注为「${memoOnChain.slice(0, 80)}${memoOnChain.length > 80 ? '…' : ''}」，当前账号邮箱为「${emailExpected}」。请核对是否多空格、全角符号或未用注册时的邮箱登录。`,
       };
     }
     const base = user.subExpire && user.subExpire > new Date() ? user.subExpire : new Date();
