@@ -1,0 +1,42 @@
+# 仅后端部署：在 apps/nestjs-server 目录执行 docker compose up -d --build
+services:
+  postgres:
+    image: postgres:16
+    container_name: hash-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-trx_hash}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-trx_hash}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  nestjs-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hash-nestjs-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-trx_hash}
+      PORT: 3003
+      TRON_FULL_HOST: ${TRON_FULL_HOST:-http://3.225.171.164:8090}
+      JWT_SECRET: ${JWT_SECRET:-trx-hash-dev-secret}
+      PNL_SYNC_SECRET: ${PNL_SYNC_SECRET:-trx-hash-pnl-sync-dev}
+      SUB_ADDRESS: ${SUB_ADDRESS:-}
+      STRATEGY_PAY_ADDRESS: ${STRATEGY_PAY_ADDRESS:-}
+    ports:
+      - "${SERVER_PORT:-3003}:3003"
+
+volumes:
+  postgres_data:

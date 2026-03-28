@@ -1,0 +1,85 @@
+// TRX Hash 量化交易 - 服务端数据库
+// 依据 PRD 6.2
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String? // scrypt 哈希，仅注册用户有值；登录必须校验
+  subExpire    DateTime?
+  pnlTotal     Float     @default(0)
+  createdAt    DateTime  @default(now())
+}
+
+model StrategyMarket {
+  id        Int     @id
+  name      String
+  price     Float
+  scriptUrl String
+  isHot     Boolean @default(false)
+}
+
+/// 市场庄家：地址、赔率、反点等（云端库维护，客户端列表+详情）
+model MarketBanker {
+  id          Int     @id @default(autoincrement())
+  name        String
+  address     String
+  odds        Float
+  rebate      Float   @default(0)
+  sortOrder   Int     @default(0) @map("sort_order")
+  note        String?
+  description String?
+
+  @@map("market_banker")
+}
+
+/// 策略购买记录：每次购买对应一条链上 txid（防复用）
+model StrategyPurchase {
+  txid       String   @id
+  userId     Int      @map("user_id")
+  strategyId Int      @map("strategy_id")
+  amountTrx  Float    @map("amount_trx")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId, strategyId])
+  @@map("strategy_purchase")
+}
+
+/// 策略使用次数：每个用户每个策略累计使用多少次
+model StrategyUsage {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  strategyId Int      @map("strategy_id")
+  usedCount  Int      @default(0) @map("used_count")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, strategyId])
+  @@map("strategy_usage")
+}
+
+model ActivationLog {
+  txid        String   @id
+  processedAt DateTime @default(now())
+
+  @@map("activation_log")
+}
+
+/// 链上区块 blockId 解析出的尾数数字（与客户端 hash-util 一致）；digit 为空表示该块 hash 无数字（跳期）
+model BlockHashLog {
+  id        Int      @id @default(autoincrement())
+  height    Int      @unique
+  blockId   String   @map("block_id")
+  digit     Int?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([height])
+  @@map("block_hash_log")
+}
