@@ -35,6 +35,8 @@ services:
       PNL_SYNC_SECRET: ${PNL_SYNC_SECRET:-trx-hash-pnl-sync-dev}
       SUB_ADDRESS: ${SUB_ADDRESS:-}
       STRATEGY_PAY_ADDRESS: ${STRATEGY_PAY_ADDRESS:-}
+      TRONGRID_API_KEYS: ${TRONGRID_API_KEYS:-}
+      TRONGRID_BASE_URL: ${TRONGRID_BASE_URL:-https://api.trongrid.io}
     ports:
       - "${SERVER_PORT:-3003}:3003"
 
