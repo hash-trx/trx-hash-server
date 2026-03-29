@@ -4,7 +4,7 @@
 
 部署后访问：**`http://<你的域名或IP>:<PORT>/admin`** 或 **`/admin/login`**（同一单页）。
 
-静态文件：`public/admin/index.html`（登录、用户/策略/市场/管理员 CRUD）。
+静态文件：`public/admin/index.html`（登录、用户/策略/市场/**在线留言**/管理员 CRUD）。
 
 ---
 
@@ -80,6 +80,20 @@
 | POST | `/admin/admins` | `{ "email", "password" }` |
 | PATCH | `/admin/admins/:id` | `{ "email"?, "password"? }` |
 | DELETE | `/admin/admins/:id` | 不能删当前登录账号；至少保留一名管理员 |
+
+---
+
+## 在线留言（客户端反馈）
+
+与 Electron 客户端「在线反馈」对应的数据表 `feedback`，后台单页 **「在线留言」** 标签即调用下列接口。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/admin/feedback?page=1&pageSize=20&status=` | 列表；`status` 可选：`new` \| `read` \| `done`，留空为全部 |
+| GET | `/admin/feedback/:id` | 详情（含完整 `content`、`adminNote`） |
+| PATCH | `/admin/feedback/:id` | `{ "status"?, "adminNote"? }` 更新处理状态或管理员备注 |
+
+公开提交（客户端，需用户 JWT 可选）：`POST /feedback`，见业务模块 `FeedbackController`。
 
 ---
 

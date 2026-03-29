@@ -65,3 +65,26 @@ npx prisma migrate deploy   # 若 CMD 未包含迁移且需手动执行时
 ```
 
 （镜像内 `CMD` 已含 `prisma migrate deploy`，一般无需在宿主机再跑。）
+
+## 6. 本地改代码后同步到 GitHub
+
+在**本机** `nestjs-server` 仓库目录（与远程 `origin` 已关联，例如 `https://github.com/hash-trx/trx-hash-server.git`）：
+
+```bash
+git status
+git add -A
+git commit -m "描述本次后端改动"
+git push origin main
+```
+
+服务器上再按 **§5** 执行 `git pull` 与 `docker compose build/up` 即可用上最新代码。
+
+推送后若仓库已启用 **GitHub Actions**，会对 `main` 分支自动执行 `ci` 工作流（安装依赖、`prisma generate`、编译 Nest），失败时请在 Actions 页查看日志。
+
+### 首次关联远程（若尚未配置）
+
+```bash
+git remote add origin https://github.com/hash-trx/trx-hash-server.git
+git branch -M main
+git push -u origin main
+```
