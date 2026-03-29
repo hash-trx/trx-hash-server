@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AdminAdminsController } from './admin-admins.controller';
 import { AdminAuthController } from './admin-auth.controller';
+import { AdminFeedbackController } from './admin-feedback.controller';
 import { AdminUiController } from './admin-ui.controller';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminMarketController } from './admin-market.controller';
@@ -10,10 +11,12 @@ import { AdminService } from './admin.service';
 import { AdminStrategiesController } from './admin-strategies.controller';
 import { AdminUsersController } from './admin-users.controller';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
+import { FeedbackModule } from '../feedback/feedback.module';
 
 @Module({
   imports: [
     PrismaModule,
+    FeedbackModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'trx-hash-dev-secret',
       signOptions: { expiresIn: '30d' },
@@ -26,6 +29,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
     AdminStrategiesController,
     AdminMarketController,
     AdminAdminsController,
+    AdminFeedbackController,
   ],
   providers: [AdminAuthService, AdminService, AdminJwtGuard],
   exports: [AdminAuthService, AdminService],

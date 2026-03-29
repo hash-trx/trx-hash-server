@@ -75,6 +75,7 @@
         <button type="button" class="active" data-tab="users" onclick="switchTab('users')">用户</button>
         <button type="button" data-tab="strategies" onclick="switchTab('strategies')">策略</button>
         <button type="button" data-tab="market" onclick="switchTab('market')">市场</button>
+        <button type="button" data-tab="feedback" onclick="switchTab('feedback')">反馈</button>
         <button type="button" data-tab="admins" onclick="switchTab('admins')">管理员</button>
       </div>
 
@@ -189,6 +190,43 @@
         </div>
       </div>
 
+      <div id="tab-feedback" class="card hidden">
+        <h2>在线反馈</h2>
+        <div class="row">
+          <select id="fbStatus" style="max-width:140px;">
+            <option value="">全部状态</option>
+            <option value="new">待处理</option>
+            <option value="read">已读</option>
+            <option value="done">已处理</option>
+          </select>
+          <button type="button" onclick="loadFeedback()">刷新</button>
+        </div>
+        <div style="overflow-x:auto;margin-top:12px;">
+          <table>
+            <thead><tr><th>ID</th><th>用户邮箱</th><th>主题</th><th>预览</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+            <tbody id="fbRows"></tbody>
+          </table>
+        </div>
+        <div id="fbDetail" class="hidden" style="margin-top:16px;">
+          <h2>详情 #<span id="fbDid"></span></h2>
+          <p class="muted" style="font-size:12px;">客户端版本 <code id="fbVer">—</code> · 联系方式 <span id="fbContact">—</span></p>
+          <label>完整内容</label>
+          <pre id="fbContent" style="max-height:240px;"></pre>
+          <label>状态</label>
+          <select id="fbEditStatus">
+            <option value="new">待处理</option>
+            <option value="read">已读</option>
+            <option value="done">已处理</option>
+          </select>
+          <label>管理员备注</label>
+          <textarea id="fbAdminNote" rows="4" style="max-width:100%;"></textarea>
+          <div class="row">
+            <button type="button" onclick="saveFeedback()">保存</button>
+            <button type="button" class="secondary" onclick="closeFbDetail()">关闭</button>
+          </div>
+        </div>
+      </div>
+
       <div id="tab-admins" class="card hidden">
         <h2>管理员</h2>
         <button type="button" onclick="loadAdmins()">刷新</button>
@@ -294,12 +332,13 @@
 
     function switchTab(name) {
       document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-      ['users', 'strategies', 'market', 'admins'].forEach(t => {
+      ['users', 'strategies', 'market', 'feedback', 'admins'].forEach(t => {
         document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
       });
       if (name === 'users') loadUsers();
       if (name === 'strategies') loadStrategies();
       if (name === 'market') loadBankers();
+      if (name === 'feedback') loadFeedback();
       if (name === 'admins') loadAdmins();
     }
 
@@ -523,6 +562,48 @@
       document.getElementById('admEdit').classList.add('hidden');
       editingAdminId = null;
       loadAdmins();
+    }
+
+    let viewingFeedbackId = null;
+    async function loadFeedback() {
+      const st = document.getElementById('fbStatus').value;
+      const qs = new URLSearchParams({ page: '1', pageSize: '50' });
+      if (st) qs.set('status', st);
+      const j = await api('/admin/feedback?' + qs.toString());
+      const tb = document.getElementById('fbRows');
+      tb.innerHTML = '';
+      (j.items || []).forEach(f => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + f.id + '</td><td>' + escapeHtml(f.userEmail || '—') + '</td><td>' + escapeHtml(f.subject || '—') + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(f.contentPreview || '') + '</td><td>' + escapeHtml(f.status) + '</td><td style="font-size:12px;">' + escapeHtml(f.createdAt) + '</td><td><button class="small" onclick="viewFeedback(' + f.id + ')">查看</button></td>';
+        tb.appendChild(tr);
+      });
+    }
+    function closeFbDetail() {
+      viewingFeedbackId = null;
+      document.getElementById('fbDetail').classList.add('hidden');
+    }
+    async function viewFeedback(id) {
+      viewingFeedbackId = id;
+      const j = await api('/admin/feedback/' + id);
+      const f = j.item;
+      if (!f) return;
+      document.getElementById('fbDetail').classList.remove('hidden');
+      document.getElementById('fbDid').textContent = id;
+      document.getElementById('fbVer').textContent = f.clientVersion || '—';
+      document.getElementById('fbContact').textContent = f.contact || '—';
+      document.getElementById('fbContent').textContent = f.content || '';
+      document.getElementById('fbEditStatus').value = f.status || 'new';
+      document.getElementById('fbAdminNote').value = f.adminNote || '';
+    }
+    async function saveFeedback() {
+      if (!viewingFeedbackId) return;
+      const body = {
+        status: document.getElementById('fbEditStatus').value,
+        adminNote: document.getElementById('fbAdminNote').value.trim() || null,
+      };
+      await api('/admin/feedback/' + viewingFeedbackId, { method: 'PATCH', body: JSON.stringify(body) });
+      alert('已保存');
+      loadFeedback();
     }
 
     (function init() {

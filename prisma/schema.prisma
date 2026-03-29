@@ -98,3 +98,23 @@ model BlockHashLog {
   @@index([height])
   @@map("block_hash_log")
 }
+
+/// 客户端在线反馈（管理后台可处理）
+model Feedback {
+  id            Int      @id @default(autoincrement())
+  userId        Int?     @map("user_id")
+  userEmail     String?  @map("user_email")
+  subject       String?
+  content       String   @db.Text
+  contact       String?
+  clientVersion String?  @map("client_version")
+  /// new | read | done
+  status        String   @default("new")
+  adminNote     String?  @db.Text @map("admin_note")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("feedback")
+}
