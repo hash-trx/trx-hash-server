@@ -23,7 +23,7 @@ export class StrategyController {
   @Get(':id/script')
   @Header('Content-Type', 'text/plain; charset=utf-8')
   async script(@Param('id') id: string) {
-    const code = this.strategies.getScriptById(Number(id));
+    const code = await this.strategies.getScriptById(Number(id));
     if (!code) return '// Not found';
     return code;
   }

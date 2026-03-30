@@ -291,7 +291,8 @@ export class StrategyService implements OnModuleInit {
     return { ok: true, userUsed: row.usedCount, userRemaining: remaining };
   }
 
-  getScriptById(id: number): string | null {
+  /** 未写入 DB 时 id 1/2 的内置示例（兼容旧数据） */
+  private legacyScriptById(id: number): string | null {
     if (id === 1) {
       return `/**
  * 顺势轻仓（示例）
@@ -344,6 +345,17 @@ module.exports.onBlock = async function onBlock(_result) {
     }
 
     return null;
+  }
+
+  async getScriptById(id: number): Promise<string | null> {
+    if (!Number.isFinite(id)) return null;
+    const r = await this.prisma.strategyMarket.findUnique({
+      where: { id },
+      select: { scriptCode: true },
+    });
+    const fromDb = r?.scriptCode?.trim();
+    if (fromDb) return fromDb;
+    return this.legacyScriptById(id);
   }
 }
 

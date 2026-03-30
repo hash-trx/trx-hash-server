@@ -35,11 +35,13 @@ model Admin {
 }
 
 model StrategyMarket {
-  id        Int     @id
-  name      String
-  price     Float
-  scriptUrl String
-  isHot     Boolean @default(false)
+  id         Int     @id
+  name       String
+  price      Float
+  scriptUrl  String
+  /// 策略 JS 正文（客户端 GET /strategies/:id/script）；为空时 id 1/2 使用内置示例
+  scriptCode String? @db.Text
+  isHot      Boolean @default(false)
 }
 
 /// 市场庄家：地址、赔率、反点等（云端库维护，客户端列表+详情）

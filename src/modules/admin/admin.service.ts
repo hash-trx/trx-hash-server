@@ -112,10 +112,19 @@ export class AdminService {
     return { ok: true, items: rows };
   }
 
-  async createStrategy(body: { id: number; name: string; price: number; scriptUrl: string; isHot?: boolean }) {
+  async createStrategy(body: {
+    id: number;
+    name: string;
+    price: number;
+    scriptUrl?: string;
+    scriptCode: string;
+    isHot?: boolean;
+  }) {
     const id = Math.floor(Number(body.id));
     if (!id) throw new BadRequestException('id 必填且为正整数');
     if (!body.name?.trim()) throw new BadRequestException('name 必填');
+    const scriptCode = (body.scriptCode ?? '').trim();
+    if (!scriptCode) throw new BadRequestException('scriptCode 必填（策略 JS 正文）');
     const exists = await this.prisma.strategyMarket.findUnique({ where: { id } });
     if (exists) throw new BadRequestException('该策略 id 已存在');
     const row = await this.prisma.strategyMarket.create({
@@ -124,6 +133,7 @@ export class AdminService {
         name: body.name.trim(),
         price: Number(body.price) || 0,
         scriptUrl: (body.scriptUrl || '').trim() || '/strategies/' + id + '/script',
+        scriptCode,
         isHot: !!body.isHot,
       },
     });
@@ -132,7 +142,7 @@ export class AdminService {
 
   async updateStrategy(
     id: number,
-    body: { name?: string; price?: number; scriptUrl?: string; isHot?: boolean },
+    body: { name?: string; price?: number; scriptUrl?: string; scriptCode?: string | null; isHot?: boolean },
   ) {
     if (!Number.isFinite(id)) throw new BadRequestException('无效 id');
     const row = await this.prisma.strategyMarket.findUnique({ where: { id } });
@@ -141,6 +151,7 @@ export class AdminService {
     if (body.name !== undefined) data.name = body.name.trim();
     if (body.price !== undefined) data.price = Number(body.price);
     if (body.scriptUrl !== undefined) data.scriptUrl = body.scriptUrl.trim();
+    if (body.scriptCode !== undefined) data.scriptCode = body.scriptCode === null || body.scriptCode === '' ? null : String(body.scriptCode).trim() || null;
     if (body.isHot !== undefined) data.isHot = !!body.isHot;
     const updated = await this.prisma.strategyMarket.update({ where: { id }, data: data as any });
     return { ok: true, strategy: updated };
