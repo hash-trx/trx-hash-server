@@ -3,15 +3,35 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { hashPassword } from '../auth/password.util';
 
+/** 客户端 DynamicParamsForm：每项必须是「字段定义」（key/label/type），不能是配置值对象 */
+function assertParamsSchemaShape(arr: unknown[]): void {
+  for (let i = 0; i < arr.length; i++) {
+    const it = arr[i];
+    if (!it || typeof it !== 'object' || Array.isArray(it)) {
+      throw new BadRequestException(`paramsSchema[${i}] 须为对象`);
+    }
+    const o = it as Record<string, unknown>;
+    if (typeof o.key !== 'string' || typeof o.label !== 'string' || typeof o.type !== 'string') {
+      throw new BadRequestException(
+        'paramsSchema 格式错误：须为「字段定义」数组，每项含 key、label、type（number/text/select），不能写成 [{"streakNeed":5,"killTimes":3}] 这类配置值。正确示例：[{"key":"streakNeed","label":"连几入场","type":"number","default":5}]',
+      );
+    }
+  }
+}
+
 function normalizeParamsSchema(input: unknown): Prisma.InputJsonValue {
   if (input === undefined || input === null) return [];
-  if (Array.isArray(input)) return input as Prisma.InputJsonValue;
+  if (Array.isArray(input)) {
+    assertParamsSchemaShape(input);
+    return input as Prisma.InputJsonValue;
+  }
   if (typeof input === 'string') {
     const t = input.trim();
     if (!t) return [];
     try {
       const p = JSON.parse(t);
       if (!Array.isArray(p)) throw new BadRequestException('paramsSchema 须为 JSON 数组');
+      assertParamsSchemaShape(p);
       return p as Prisma.InputJsonValue;
     } catch (e) {
       if (e instanceof BadRequestException) throw e;

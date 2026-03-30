@@ -131,8 +131,13 @@
         <input id="nsPrice" type="number" step="any" />
         <label>策略代码（JS 正文，必填）</label>
         <textarea id="nsCode" rows="14" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;"></textarea>
-        <label>参数 schema（JSON 数组，与客户端 DynamicParamsForm 一致；可空为 []）</label>
-        <textarea id="nsParams" rows="8" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;" placeholder='[{"key":"betAmount","label":"投注(TRX)","type":"number","default":10,"min":1}]'></textarea>
+        <label>参数 schema（JSON 数组）</label>
+        <p class="muted" style="font-size:12px;margin:-4px 0 8px;line-height:1.45;">
+          <strong>不是</strong>运行时配置值。须为「字段定义」列表，每项含 <code>key</code>、<code>label</code>、<code>type</code>（及 <code>default</code> 等），客户端据此生成表单并写入 <code>config</code>。<br />
+          <span style="color:#c44;">错误</span>：<code>[{"streakNeed":5,"killTimes":3}]</code>（会被客户端忽略，仍显示默认 betAmount 等）<br />
+          <span style="color:#2a7;">正确</span>：<code>[{"key":"streakNeed","label":"连几入场","type":"number","default":5}]</code>
+        </p>
+        <textarea id="nsParams" rows="10" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;">[]</textarea>
         <label>scriptUrl（可选，默认按 ID 生成）</label>
         <input id="nsUrl" placeholder="/strategies/3/script" />
         <label><input type="checkbox" id="nsHot" /> 热门</label>
@@ -145,8 +150,8 @@
           <input id="esPrice" type="number" step="any" />
           <label>策略代码（JS 正文）</label>
           <textarea id="esCode" rows="14" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;"></textarea>
-          <label>参数 schema（JSON 数组）</label>
-          <textarea id="esParams" rows="8" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;"></textarea>
+          <label>参数 schema（JSON 数组，每项须含 key / label / type）</label>
+          <textarea id="esParams" rows="10" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;"></textarea>
           <label>scriptUrl</label>
           <input id="esUrl" />
           <label><input type="checkbox" id="esHot" /> 热门</label>
@@ -451,6 +456,13 @@
       const raw = (text || '').trim() || '[]';
       const v = JSON.parse(raw);
       if (!Array.isArray(v)) throw new Error('paramsSchema 须为 JSON 数组');
+      for (let i = 0; i < v.length; i++) {
+        const o = v[i];
+        if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error('paramsSchema[' + i + '] 须为对象');
+        if (typeof o.key !== 'string' || typeof o.label !== 'string' || typeof o.type !== 'string') {
+          throw new Error('须为「字段定义」：每项含 key、label、type，不能填 {"streakNeed":5} 这种配置值对象');
+        }
+      }
       return v;
     }
     async function createStrategy() {
