@@ -1,6 +1,25 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { hashPassword } from '../auth/password.util';
+
+function normalizeParamsSchema(input: unknown): Prisma.InputJsonValue {
+  if (input === undefined || input === null) return [];
+  if (Array.isArray(input)) return input as Prisma.InputJsonValue;
+  if (typeof input === 'string') {
+    const t = input.trim();
+    if (!t) return [];
+    try {
+      const p = JSON.parse(t);
+      if (!Array.isArray(p)) throw new BadRequestException('paramsSchema 须为 JSON 数组');
+      return p as Prisma.InputJsonValue;
+    } catch (e) {
+      if (e instanceof BadRequestException) throw e;
+      throw new BadRequestException('paramsSchema 不是合法 JSON');
+    }
+  }
+  throw new BadRequestException('paramsSchema 须为 JSON 数组');
+}
 
 @Injectable()
 export class AdminService {
@@ -118,6 +137,7 @@ export class AdminService {
     price: number;
     scriptUrl?: string;
     scriptCode: string;
+    paramsSchema?: unknown;
     isHot?: boolean;
   }) {
     const id = Math.floor(Number(body.id));
@@ -134,6 +154,7 @@ export class AdminService {
         price: Number(body.price) || 0,
         scriptUrl: (body.scriptUrl || '').trim() || '/strategies/' + id + '/script',
         scriptCode,
+        paramsSchema: normalizeParamsSchema(body.paramsSchema !== undefined ? body.paramsSchema : []),
         isHot: !!body.isHot,
       },
     });
@@ -142,7 +163,14 @@ export class AdminService {
 
   async updateStrategy(
     id: number,
-    body: { name?: string; price?: number; scriptUrl?: string; scriptCode?: string | null; isHot?: boolean },
+    body: {
+      name?: string;
+      price?: number;
+      scriptUrl?: string;
+      scriptCode?: string | null;
+      paramsSchema?: unknown;
+      isHot?: boolean;
+    },
   ) {
     if (!Number.isFinite(id)) throw new BadRequestException('无效 id');
     const row = await this.prisma.strategyMarket.findUnique({ where: { id } });
@@ -152,6 +180,7 @@ export class AdminService {
     if (body.price !== undefined) data.price = Number(body.price);
     if (body.scriptUrl !== undefined) data.scriptUrl = body.scriptUrl.trim();
     if (body.scriptCode !== undefined) data.scriptCode = body.scriptCode === null || body.scriptCode === '' ? null : String(body.scriptCode).trim() || null;
+    if (body.paramsSchema !== undefined) data.paramsSchema = normalizeParamsSchema(body.paramsSchema);
     if (body.isHot !== undefined) data.isHot = !!body.isHot;
     const updated = await this.prisma.strategyMarket.update({ where: { id }, data: data as any });
     return { ok: true, strategy: updated };

@@ -91,6 +91,7 @@ export class StrategyService implements OnModuleInit {
       price: number;
       scriptUrl: string;
       isHot: boolean;
+      paramsSchema: unknown[];
       userPurchased?: number;
       userUsed?: number;
       userRemaining?: number;
@@ -105,6 +106,7 @@ export class StrategyService implements OnModuleInit {
       price: r.price,
       scriptUrl: r.scriptUrl,
       isHot: r.isHot,
+      paramsSchema: Array.isArray(r.paramsSchema as unknown) ? (r.paramsSchema as unknown[]) : [],
     }));
 
     const userId = this.getUserIdFromToken(token);
@@ -158,6 +160,7 @@ export class StrategyService implements OnModuleInit {
     price: number;
     scriptUrl: string;
     isHot: boolean;
+    paramsSchema: unknown[];
     description?: string;
     entry?: string[];
     notes?: string[];
@@ -168,7 +171,8 @@ export class StrategyService implements OnModuleInit {
     if (!Number.isFinite(id)) return null;
     const r = await this.prisma.strategyMarket.findUnique({ where: { id } });
     if (!r) return null;
-    const base = { id: r.id, name: r.name, price: r.price, scriptUrl: r.scriptUrl, isHot: r.isHot };
+    const paramsSchema = Array.isArray(r.paramsSchema as unknown) ? (r.paramsSchema as unknown[]) : [];
+    const base = { id: r.id, name: r.name, price: r.price, scriptUrl: r.scriptUrl, isHot: r.isHot, paramsSchema };
     const meta =
       id === 1
         ? {

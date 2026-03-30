@@ -41,6 +41,8 @@ model StrategyMarket {
   scriptUrl  String
   /// 策略 JS 正文（客户端 GET /strategies/:id/script）；为空时 id 1/2 使用内置示例
   scriptCode String? @db.Text
+  /// 与本地策略 params_schema 相同：DynamicParamsForm 的字段定义 JSON 数组
+  paramsSchema Json @default("[]")
   isHot      Boolean @default(false)
 }
 
