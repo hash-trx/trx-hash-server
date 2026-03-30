@@ -46,6 +46,19 @@ model StrategyMarket {
   isHot      Boolean @default(false)
 }
 
+/// 注码方案：云端维护（kind + 参数 schema），客户端拉取后由主进程状态机执行
+model StakingPreset {
+  id            Int     @id @default(autoincrement())
+  kind          String
+  name          String
+  /// DynamicParamsForm 字段定义 JSON 数组
+  paramsSchema Json    @default("[]")
+  enabled       Boolean @default(true)
+  sortOrder     Int     @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+}
+
 /// 市场庄家：地址、赔率、反点等（云端库维护，客户端列表+详情）
 model MarketBanker {
   id          Int     @id @default(autoincrement())

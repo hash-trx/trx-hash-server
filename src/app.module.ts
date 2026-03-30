@@ -11,6 +11,7 @@ import { BlockHashModule } from './modules/block-hash/block-hash.module';
 import { TronModule } from './modules/tron/tron.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { StakingPresetsModule } from './modules/staking-presets/staking-presets.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
     TronModule,
     FeedbackModule,
     AdminModule,
+    StakingPresetsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

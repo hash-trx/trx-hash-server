@@ -216,6 +216,71 @@ export class AdminService {
     return { ok: true };
   }
 
+  // ---------- 注码方案（StakingPreset）----------
+  async listStakingPresets() {
+    const rows = await this.prisma.stakingPreset.findMany({
+      orderBy: [{ enabled: 'desc' }, { sortOrder: 'asc' }, { id: 'asc' }],
+    });
+    return { ok: true, items: rows };
+  }
+
+  async createStakingPreset(body: {
+    kind: string;
+    name: string;
+    paramsSchema?: unknown;
+    enabled?: boolean;
+    sortOrder?: number;
+  }) {
+    const kind = String(body.kind || '').trim();
+    if (!kind) throw new BadRequestException('kind 必填');
+    const name = String(body.name || '').trim();
+    if (!name) throw new BadRequestException('name 必填');
+
+    const row = await this.prisma.stakingPreset.create({
+      data: {
+        kind,
+        name,
+        paramsSchema: normalizeParamsSchema(body.paramsSchema),
+        enabled: body.enabled === undefined ? true : !!body.enabled,
+        sortOrder: body.sortOrder === undefined ? 0 : Number(body.sortOrder) || 0,
+      },
+    });
+    return { ok: true, preset: row };
+  }
+
+  async updateStakingPreset(
+    id: number,
+    body: {
+      kind?: string;
+      name?: string;
+      paramsSchema?: unknown;
+      enabled?: boolean;
+      sortOrder?: number;
+    },
+  ) {
+    if (!Number.isFinite(id)) throw new BadRequestException('无效 id');
+    const exists = await this.prisma.stakingPreset.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException('注码方案不存在');
+
+    const data: Record<string, unknown> = {};
+    if (body.kind !== undefined) data.kind = String(body.kind).trim();
+    if (body.name !== undefined) data.name = String(body.name).trim();
+    if (body.paramsSchema !== undefined) data.paramsSchema = normalizeParamsSchema(body.paramsSchema);
+    if (body.enabled !== undefined) data.enabled = !!body.enabled;
+    if (body.sortOrder !== undefined) data.sortOrder = Number(body.sortOrder) || 0;
+
+    const updated = await this.prisma.stakingPreset.update({ where: { id }, data: data as any });
+    return { ok: true, preset: updated };
+  }
+
+  async deleteStakingPreset(id: number) {
+    if (!Number.isFinite(id)) throw new BadRequestException('无效 id');
+    const exists = await this.prisma.stakingPreset.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException('注码方案不存在');
+    await this.prisma.stakingPreset.delete({ where: { id } });
+    return { ok: true };
+  }
+
   // ---------- 市场庄家 ----------
   async listBankers() {
     const rows = await this.prisma.marketBanker.findMany({

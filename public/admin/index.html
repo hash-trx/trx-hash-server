@@ -74,6 +74,7 @@
       <div class="tabs">
         <button type="button" class="active" data-tab="users" onclick="switchTab('users')">用户</button>
         <button type="button" data-tab="strategies" onclick="switchTab('strategies')">策略</button>
+        <button type="button" data-tab="staking" onclick="switchTab('staking')">注码方案</button>
         <button type="button" data-tab="market" onclick="switchTab('market')">市场</button>
         <button type="button" data-tab="feedback" onclick="switchTab('feedback')">在线留言</button>
         <button type="button" data-tab="admins" onclick="switchTab('admins')">管理员</button>
@@ -136,6 +137,8 @@
           <strong>不是</strong>运行时配置值。须为「字段定义」列表，每项含 <code>key</code>、<code>label</code>、<code>type</code>（及 <code>default</code> 等），客户端据此生成表单并写入 <code>config</code>。<br />
           <span style="color:#c44;">错误</span>：<code>[{"streakNeed":5,"killTimes":3}]</code>（会被客户端忽略，仍显示默认 betAmount 等）<br />
           <span style="color:#2a7;">正确</span>：<code>[{"key":"streakNeed","label":"连几入场","type":"number","default":5}]</code>
+          <br />
+          <span style="color:#93c5fd;">提示</span>：下注金额由客户端选择的「注码方案」决定；这里的 paramsSchema 只填策略触发/方向相关字段（例如斩龙的 streakNeed、killTimes），不要填注码档位/金额字段。
         </p>
         <textarea id="nsParams" rows="10" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;">[]</textarea>
         <label>scriptUrl（可选，默认按 ID 生成）</label>
@@ -158,6 +161,48 @@
           <div class="row">
             <button type="button" onclick="saveStrategy()">保存</button>
             <button type="button" class="danger" onclick="deleteStrategy()">删除</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-staking" class="card hidden">
+        <h2>注码方案</h2>
+        <button type="button" onclick="loadStakingPresets()">刷新</button>
+        <table style="margin-top:16px;">
+          <thead>
+            <tr>
+              <th>ID</th><th>kind</th><th>名称</th><th>启用</th><th>排序</th><th>paramsSchema</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="spRows"></tbody>
+        </table>
+
+        <h2 style="margin-top:20px;">新建注码方案</h2>
+        <label>kind（例如 flat / martingale_reset / fibonacci_back2）</label>
+        <input id="nsKind" />
+        <label>名称</label>
+        <input id="nsSName" />
+        <label>排序</label>
+        <input id="nsSortOrder" type="number" />
+        <label><input type="checkbox" id="nsEnabled" checked /> 启用</label>
+        <label>paramsSchema（JSON 数组，每项须含 key/label/type；会用于生成金额表单）</label>
+        <textarea id="nsSParams" rows="10" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;">[]</textarea>
+        <button type="button" onclick="createStakingPreset()">创建</button>
+
+        <div id="stakingEdit" class="hidden" style="margin-top:16px;">
+          <h2>编辑注码方案 #<span id="spid"></span></h2>
+          <label>kind</label>
+          <input id="esKind" />
+          <label>名称</label>
+          <input id="esSName" />
+          <label>排序</label>
+          <input id="esSortOrder" type="number" />
+          <label><input type="checkbox" id="esEnabled" /> 启用</label>
+          <label>paramsSchema</label>
+          <textarea id="esSParams" rows="10" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;"></textarea>
+          <div class="row">
+            <button type="button" onclick="saveStakingPreset()">保存</button>
+            <button type="button" class="danger" onclick="deleteStakingPreset()">删除</button>
           </div>
         </div>
       </div>
@@ -347,11 +392,12 @@
 
     function switchTab(name) {
       document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-      ['users', 'strategies', 'market', 'feedback', 'admins'].forEach(t => {
+      ['users', 'strategies', 'staking', 'market', 'feedback', 'admins'].forEach(t => {
         document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
       });
       if (name === 'users') loadUsers();
       if (name === 'strategies') loadStrategies();
+      if (name === 'staking') loadStakingPresets();
       if (name === 'market') loadBankers();
       if (name === 'feedback') loadFeedback();
       if (name === 'admins') loadAdmins();
@@ -514,6 +560,122 @@
       document.getElementById('stratEdit').classList.add('hidden');
       editingStratId = null;
       loadStrategies();
+    }
+
+    let editingStakingId = null;
+    async function loadStakingPresets() {
+      const j = await api('/admin/staking-presets');
+      const tb = document.getElementById('spRows');
+      tb.innerHTML = '';
+      (j.items || []).forEach((s) => {
+        const n = Array.isArray(s.paramsSchema) ? s.paramsSchema.length : 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' +
+          s.id +
+          '</td><td>' +
+          escapeHtml(s.kind) +
+          '</td><td>' +
+          escapeHtml(s.name) +
+          '</td><td>' +
+          (s.enabled ? '是' : '否') +
+          '</td><td>' +
+          (s.sortOrder ?? 0) +
+          '</td><td>' +
+          n +
+          ' 项</td><td><button class="small" onclick="editStakingPreset(' +
+          s.id +
+          ')">编辑</button></td>';
+        tb.appendChild(tr);
+      });
+    }
+
+    async function editStakingPreset(id) {
+      editingStakingId = id;
+      const j = await api('/admin/staking-presets');
+      const s = (j.items || []).find((x) => x.id === id);
+      if (!s) return;
+      document.getElementById('stakingEdit').classList.remove('hidden');
+      document.getElementById('spid').textContent = id;
+      document.getElementById('esKind').value = s.kind || '';
+      document.getElementById('esSName').value = s.name || '';
+      document.getElementById('esSortOrder').value = s.sortOrder ?? 0;
+      document.getElementById('esEnabled').checked = !!s.enabled;
+      try {
+        document.getElementById('esSParams').value = JSON.stringify(Array.isArray(s.paramsSchema) ? s.paramsSchema : [], null, 2);
+      } catch (e) {
+        document.getElementById('esSParams').value = '[]';
+      }
+    }
+
+    function getSortOrderValue(elId) {
+      const v = document.getElementById(elId).value;
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    async function createStakingPreset() {
+      const kind = (document.getElementById('nsKind').value || '').trim();
+      const name = (document.getElementById('nsSName').value || '').trim();
+      if (!kind) return alert('kind 必填');
+      if (!name) return alert('名称必填');
+
+      let paramsSchema;
+      try {
+        paramsSchema = parseParamsSchemaField(document.getElementById('nsSParams').value);
+      } catch (e) {
+        alert('参数 schema JSON 无效：' + (e && e.message ? e.message : String(e)));
+        return;
+      }
+
+      const body = {
+        kind,
+        name,
+        paramsSchema,
+        enabled: document.getElementById('nsEnabled').checked,
+        sortOrder: getSortOrderValue('nsSortOrder'),
+      };
+
+      await api('/admin/staking-presets', { method: 'POST', body: JSON.stringify(body) });
+      alert('已创建');
+      loadStakingPresets();
+    }
+
+    async function saveStakingPreset() {
+      if (!editingStakingId) return;
+      const kind = (document.getElementById('esKind').value || '').trim();
+      const name = (document.getElementById('esSName').value || '').trim();
+      if (!kind) return alert('kind 必填');
+      if (!name) return alert('名称必填');
+
+      let paramsSchema;
+      try {
+        paramsSchema = parseParamsSchemaField(document.getElementById('esSParams').value);
+      } catch (e) {
+        alert('参数 schema JSON 无效：' + (e && e.message ? e.message : String(e)));
+        return;
+      }
+
+      const body = {
+        kind,
+        name,
+        paramsSchema,
+        enabled: document.getElementById('esEnabled').checked,
+        sortOrder: getSortOrderValue('esSortOrder'),
+      };
+
+      await api('/admin/staking-presets/' + editingStakingId, { method: 'PATCH', body: JSON.stringify(body) });
+      alert('已保存');
+      loadStakingPresets();
+    }
+
+    async function deleteStakingPreset() {
+      if (!editingStakingId) return;
+      if (!confirm('确定删除注码方案 ' + editingStakingId + '？')) return;
+      await api('/admin/staking-presets/' + editingStakingId, { method: 'DELETE' });
+      document.getElementById('stakingEdit').classList.add('hidden');
+      editingStakingId = null;
+      loadStakingPresets();
     }
 
     let editingBankId = null;

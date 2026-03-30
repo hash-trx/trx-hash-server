@@ -316,8 +316,8 @@ module.exports.onBlock = async function onBlock(result) {
 
   // 连续 >=2 次，顺势轻仓
   if (streak >= 2) {
-    const amt = Number(config?.betAmount ?? config?.baseAmount ?? 1) || 1;
-    await bet(amt);
+    // 金额由注码引擎注入；这里仅声明押注方向
+    await betPick(result.type);
   }
 };
 `;
@@ -330,21 +330,10 @@ module.exports.onBlock = async function onBlock(result) {
  * - 风险极高：请谨慎使用
  */
 
-let nextAmount = null;
-
-module.exports.onBlock = async function onBlock(_result) {
-  const base = Number(config?.betAmount ?? config?.baseAmount ?? 1) || 1;
-  const maxBet = Number(config?.maxBet ?? 128) || 128;
-
-  if (nextAmount == null) nextAmount = base;
-
-  // 简化逻辑：每次都下注；输赢结果由系统回调更新 nextAmount（这里只示例）
-  const amt = Math.min(nextAmount, maxBet);
-  await bet(amt);
+module.exports.onBlock = async function onBlock(result) {
+  // 金额由注码引擎注入；这里仅声明押注方向
+  await betPick(result.type);
 };
-
-// 可选：如果你的沙箱支持接收上一笔 profit，可以在这里根据盈亏调整 nextAmount
-// module.exports.onBetResult = function ({ profit }) { ... }
 `;
     }
 
