@@ -7,6 +7,50 @@ export class BlockHashController {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
+   * 云端优先：返回最近一次写入的最新区块（由 BlockHashIngestService 持续同步到 block_hash_log）
+   */
+  @Get('latest')
+  async latest() {
+    const row = await this.prisma.blockHashLog.findFirst({
+      orderBy: { height: 'desc' },
+      select: { height: true, blockId: true, digit: true, createdAt: true },
+    });
+    if (!row) return { ok: false, error: 'no block yet' };
+    return {
+      ok: true,
+      item: {
+        height: row.height,
+        blockId: row.blockId,
+        digit: row.digit,
+        createdAt: row.createdAt,
+      },
+    };
+  }
+
+  /**
+   * 云端优先：按高度取块；height<=0 或缺省时等同 latest
+   */
+  @Get('block')
+  async block(@Query('height') heightRaw?: string) {
+    const h = Math.floor(parseInt(heightRaw ?? '-1', 10) || -1);
+    if (h <= 0) return this.latest();
+    const row = await this.prisma.blockHashLog.findUnique({
+      where: { height: h },
+      select: { height: true, blockId: true, digit: true, createdAt: true },
+    });
+    if (!row) return { ok: false, error: 'not found', height: h };
+    return {
+      ok: true,
+      item: {
+        height: row.height,
+        blockId: row.blockId,
+        digit: row.digit,
+        createdAt: row.createdAt,
+      },
+    };
+  }
+
+  /**
    * 路单用：只返回落在「区块间隔」网格上的高度（与客户端 shouldEmit: height % interval === 0 一致）
    * @query interval 默认 20，范围 1–200
    * @query limit 默认 100，最多 500
