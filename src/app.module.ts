@@ -12,6 +12,7 @@ import { TronModule } from './modules/tron/tron.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { StakingPresetsModule } from './modules/staking-presets/staking-presets.module';
+import { PublicAssetsController } from './modules/public-assets/public-assets.controller';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { StakingPresetsModule } from './modules/staking-presets/staking-presets.
     AdminModule,
     StakingPresetsModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, PublicAssetsController],
   providers: [AppService],
 })
 export class AppModule {}
