@@ -17,8 +17,7 @@ export class StakingPresetsController implements OnModuleInit {
         kind: 'flat',
         name: '平推（同额）',
         paramsSchema: [
-          { key: 'baseAmount', label: '平注(TRX)', type: 'number', default: 10, min: 1, step: 1 },
-          { key: 'maxBet', label: '最大(TRX)', type: 'number', default: 128, min: 1, step: 1 },
+          { key: 'ladder', label: '投注金额(TRX)', type: 'text', default: '10', help: '平推：只需一个金额，每局用同额下注。' },
         ],
         enabled: true,
         sortOrder: 10,
@@ -27,10 +26,7 @@ export class StakingPresetsController implements OnModuleInit {
         kind: 'martingale_reset',
         name: '倍投（胜复位）',
         paramsSchema: [
-          { key: 'baseAmount', label: '首注(TRX)', type: 'number', default: 10, min: 1, step: 1 },
-          { key: 'multiplier', label: '倍数', type: 'number', default: 2, min: 1, step: 0.5 },
-          { key: 'maxBet', label: '最大(TRX)', type: 'number', default: 128, min: 1, step: 1 },
-          { key: 'maxIndex', label: '最大档位', type: 'number', default: 10, min: 1, step: 1 },
+          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,40,80', help: '不中 → 序列下一格；中 → 回到第一格（胜复位）' },
         ],
         enabled: true,
         sortOrder: 20,
@@ -39,10 +35,7 @@ export class StakingPresetsController implements OnModuleInit {
         kind: 'fibonacci_back2',
         name: '斐波那契（胜回退2格）',
         paramsSchema: [
-          { key: 'baseAmount', label: '基数(TRX)', type: 'number', default: 10, min: 1, step: 1 },
-          { key: 'backSteps', label: '胜回退格数', type: 'number', default: 2, min: 1, step: 1 },
-          { key: 'maxBet', label: '最大(TRX)', type: 'number', default: 128, min: 1, step: 1 },
-          { key: 'maxIndex', label: '最大档位', type: 'number', default: 10, min: 1, step: 1 },
+          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,10,20,30,50,80', help: '不中 → 序列下一格；中 → 回退 2 格（最低回到第一格）' },
         ],
         enabled: true,
         sortOrder: 30,
@@ -51,14 +44,19 @@ export class StakingPresetsController implements OnModuleInit {
         kind: 'win_streak_reset',
         name: '连赢复位（连赢K次回第一档）',
         paramsSchema: [
-          { key: 'baseAmount', label: '首注(TRX)', type: 'number', default: 10, min: 1, step: 1 },
-          { key: 'multiplier', label: '倍数', type: 'number', default: 2, min: 1, step: 0.5 },
-          { key: 'resetAfterWins', label: '连赢K次回复', type: 'number', default: 2, min: 1, step: 1 },
-          { key: 'maxBet', label: '最大(TRX)', type: 'number', default: 128, min: 1, step: 1 },
-          { key: 'maxIndex', label: '最大档位', type: 'number', default: 10, min: 1, step: 1 },
+          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,30,40', help: '不中 → 序列下一格；连赢 2 次 → 回到第一格（默认 K=2，后续如需可上云可配）' },
         ],
         enabled: true,
         sortOrder: 40,
+      },
+      {
+        kind: 'round3_ruleset1',
+        name: '三把内结算（进2/退1/留档）',
+        paramsSchema: [
+          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,30,50', help: '每轮最多3把：不在首档且第1把赢→退1；否则按该轮3把胜负决定进2/进1/退1/不动（规则已内置）' },
+        ],
+        enabled: true,
+        sortOrder: 50,
       },
     ]
 
