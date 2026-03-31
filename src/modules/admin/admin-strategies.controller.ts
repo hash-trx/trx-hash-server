@@ -20,6 +20,9 @@ export class AdminStrategiesController {
       name: string;
       price: number;
       scriptUrl?: string;
+      description?: string;
+      entry?: unknown;
+      notes?: unknown;
       scriptCode: string;
       paramsSchema?: unknown;
       isHot?: boolean;
@@ -32,7 +35,17 @@ export class AdminStrategiesController {
   update(
     @Param('id') id: string,
     @Body()
-    body: { name?: string; price?: number; scriptUrl?: string; scriptCode?: string | null; paramsSchema?: unknown; isHot?: boolean },
+    body: {
+      name?: string;
+      price?: number;
+      scriptUrl?: string;
+      description?: string | null;
+      entry?: unknown;
+      notes?: unknown;
+      scriptCode?: string | null;
+      paramsSchema?: unknown;
+      isHot?: boolean;
+    },
   ) {
     return this.admin.updateStrategy(parseInt(id, 10), body);
   }

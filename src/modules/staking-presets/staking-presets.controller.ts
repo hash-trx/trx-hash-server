@@ -1,6 +1,18 @@
 import { Controller, Get, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
+const AUTO_MATCH_FIELD = {
+  key: 'autoMatch',
+  label: '是否自动匹配',
+  type: 'select',
+  default: 'yes',
+  options: [
+    { label: '是（引擎按输赢改转账金额）', value: 'yes' },
+    { label: '否（按策略脚本填写的金额）', value: 'no' },
+  ],
+  help: '是：按注码方案与 ladder 计算每笔转账；否：使用策略脚本下注金额，不覆盖、不推进档位。',
+}
+
 @Controller('staking-presets')
 export class StakingPresetsController implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
@@ -16,9 +28,7 @@ export class StakingPresetsController implements OnModuleInit {
       {
         kind: 'flat',
         name: '平推（同额）',
-        paramsSchema: [
-          { key: 'ladder', label: '投注金额(TRX)', type: 'text', default: '10', help: '平推：只需一个金额，每局用同额下注。' },
-        ],
+        paramsSchema: [AUTO_MATCH_FIELD, { key: 'ladder', label: '投注金额(TRX)', type: 'text', default: '10', help: '平推：只需一个金额，每局用同额下注。' }],
         enabled: true,
         sortOrder: 10,
       },
@@ -26,6 +36,7 @@ export class StakingPresetsController implements OnModuleInit {
         kind: 'martingale_reset',
         name: '倍投（胜复位）',
         paramsSchema: [
+          AUTO_MATCH_FIELD,
           { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,40,80', help: '不中 → 序列下一格；中 → 回到第一格（胜复位）' },
         ],
         enabled: true,
@@ -35,6 +46,7 @@ export class StakingPresetsController implements OnModuleInit {
         kind: 'fibonacci_back2',
         name: '斐波那契（胜回退2格）',
         paramsSchema: [
+          AUTO_MATCH_FIELD,
           { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,10,20,30,50,80', help: '不中 → 序列下一格；中 → 回退 2 格（最低回到第一格）' },
         ],
         enabled: true,
@@ -44,6 +56,7 @@ export class StakingPresetsController implements OnModuleInit {
         kind: 'win_streak_reset',
         name: '连赢复位（连赢K次回第一档）',
         paramsSchema: [
+          AUTO_MATCH_FIELD,
           { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,30,40', help: '不中 → 序列下一格；连赢 2 次 → 回到第一格（默认 K=2，后续如需可上云可配）' },
         ],
         enabled: true,
@@ -53,6 +66,7 @@ export class StakingPresetsController implements OnModuleInit {
         kind: 'round3_ruleset1',
         name: '三把内结算（进2/退1/留档）',
         paramsSchema: [
+          AUTO_MATCH_FIELD,
           { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,30,50', help: '每轮最多3把：不在首档且第1把赢→退1；否则按该轮3把胜负决定进2/进1/退1/不动（规则已内置）' },
         ],
         enabled: true,

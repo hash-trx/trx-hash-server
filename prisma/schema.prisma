@@ -39,6 +39,12 @@ model StrategyMarket {
   name       String
   price      Float
   scriptUrl  String
+  /// 策略说明（市场详情页展示）
+  description String?
+  /// 入场规则说明（字符串数组，市场详情页展示）
+  entry      Json    @default("[]")
+  /// 注意事项说明（字符串数组，市场详情页展示）
+  notes      Json    @default("[]")
   /// 策略 JS 正文（客户端 GET /strategies/:id/script）；为空时 id 1/2 使用内置示例
   scriptCode String? @db.Text
   /// 与本地策略 params_schema 相同：DynamicParamsForm 的字段定义 JSON 数组

@@ -188,13 +188,22 @@ export class StrategyService implements OnModuleInit {
             }
           : { description: '', entry: [], notes: [] };
 
+    const dbDesc = (r as any).description ?? undefined;
+    const dbEntry = Array.isArray((r as any).entry) ? ((r as any).entry as any[]).filter((x) => typeof x === 'string') : [];
+    const dbNotes = Array.isArray((r as any).notes) ? ((r as any).notes as any[]).filter((x) => typeof x === 'string') : [];
+    const mergedMeta = {
+      description: (dbDesc && String(dbDesc).trim()) ? String(dbDesc) : (meta as any).description,
+      entry: dbEntry.length ? (dbEntry as string[]) : (meta as any).entry,
+      notes: dbNotes.length ? (dbNotes as string[]) : (meta as any).notes,
+    };
+
     const userId = this.getUserIdFromToken(token);
-    if (!userId) return { ...base, ...meta };
+    if (!userId) return { ...base, ...mergedMeta };
     const { purchaseMap, usedMap } = await this.getCounts(userId, [id]);
     const purchased = purchaseMap.get(id) ?? 0;
     const used = usedMap.get(id) ?? 0;
     const remaining = r.price > 0 ? Math.max(0, purchased - used) : 999999;
-    return { ...base, ...meta, userPurchased: purchased, userUsed: used, userRemaining: remaining };
+    return { ...base, ...mergedMeta, userPurchased: purchased, userUsed: used, userRemaining: remaining };
   }
 
   private async fetchTxById(txid: string): Promise<{ ok: true; tx: any } | { ok: false; error: string }> {

@@ -130,6 +130,12 @@
         <input id="nsName" />
         <label>价格</label>
         <input id="nsPrice" type="number" step="any" />
+        <label>策略说明（Market 展示，可选）</label>
+        <textarea id="nsDesc" rows="4" style="width:100%;max-width:720px;"></textarea>
+        <label>入场规则（每行一条，可选）</label>
+        <textarea id="nsEntry" rows="4" style="width:100%;max-width:720px;"></textarea>
+        <label>注意事项（每行一条，可选）</label>
+        <textarea id="nsNotes" rows="4" style="width:100%;max-width:720px;"></textarea>
         <label>策略代码（JS 正文，必填）</label>
         <textarea id="nsCode" rows="14" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;"></textarea>
         <label>参数 schema（JSON 数组）</label>
@@ -151,6 +157,12 @@
           <input id="esName" />
           <label>价格</label>
           <input id="esPrice" type="number" step="any" />
+          <label>策略说明（Market 展示，可选）</label>
+          <textarea id="esDesc" rows="4" style="width:100%;max-width:720px;"></textarea>
+          <label>入场规则（每行一条，可选）</label>
+          <textarea id="esEntry" rows="4" style="width:100%;max-width:720px;"></textarea>
+          <label>注意事项（每行一条，可选）</label>
+          <textarea id="esNotes" rows="4" style="width:100%;max-width:720px;"></textarea>
           <label>策略代码（JS 正文）</label>
           <textarea id="esCode" rows="14" style="width:100%;max-width:720px;font-family:monospace;font-size:12px;"></textarea>
           <label>参数 schema（JSON 数组，每项须含 key / label / type）</label>
@@ -489,6 +501,9 @@
       document.getElementById('sid').textContent = id;
       document.getElementById('esName').value = s.name;
       document.getElementById('esPrice').value = s.price;
+      document.getElementById('esDesc').value = s.description != null ? String(s.description) : '';
+      document.getElementById('esEntry').value = Array.isArray(s.entry) ? s.entry.join('\n') : '';
+      document.getElementById('esNotes').value = Array.isArray(s.notes) ? s.notes.join('\n') : '';
       document.getElementById('esCode').value = s.scriptCode != null ? String(s.scriptCode) : '';
       try {
         document.getElementById('esParams').value = JSON.stringify(Array.isArray(s.paramsSchema) ? s.paramsSchema : [], null, 2);
@@ -511,6 +526,12 @@
       }
       return v;
     }
+    function parseLines(text) {
+      return String(text || '')
+        .split(/\\r?\\n/g)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
     async function createStrategy() {
       let paramsSchema;
       try {
@@ -523,6 +544,9 @@
         id: parseInt(document.getElementById('nsId').value, 10),
         name: document.getElementById('nsName').value.trim(),
         price: parseFloat(document.getElementById('nsPrice').value),
+        description: document.getElementById('nsDesc').value,
+        entry: parseLines(document.getElementById('nsEntry').value),
+        notes: parseLines(document.getElementById('nsNotes').value),
         scriptCode: document.getElementById('nsCode').value,
         paramsSchema,
         scriptUrl: document.getElementById('nsUrl').value.trim(),
@@ -544,6 +568,9 @@
       const body = {
         name: document.getElementById('esName').value.trim(),
         price: parseFloat(document.getElementById('esPrice').value),
+        description: document.getElementById('esDesc').value,
+        entry: parseLines(document.getElementById('esEntry').value),
+        notes: parseLines(document.getElementById('esNotes').value),
         scriptCode: document.getElementById('esCode').value,
         paramsSchema,
         scriptUrl: document.getElementById('esUrl').value.trim(),

@@ -144,6 +144,25 @@ export class AdminService {
   }
 
   // ---------- 策略（StrategyMarket）----------
+  private normalizeStringList(input: unknown): string[] {
+    if (input == null) return [];
+    if (Array.isArray(input)) {
+      return input
+        .filter((x) => typeof x === 'string')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    if (typeof input === 'string') {
+      const t = input.trim();
+      if (!t) return [];
+      return t
+        .split(/\r?\n/g)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    throw new BadRequestException('entry/notes 须为字符串数组或多行文本');
+  }
+
   async listStrategies() {
     const rows = await this.prisma.strategyMarket.findMany({
       orderBy: [{ isHot: 'desc' }, { id: 'asc' }],
@@ -156,6 +175,9 @@ export class AdminService {
     name: string;
     price: number;
     scriptUrl?: string;
+    description?: string;
+    entry?: unknown;
+    notes?: unknown;
     scriptCode: string;
     paramsSchema?: unknown;
     isHot?: boolean;
@@ -173,6 +195,9 @@ export class AdminService {
         name: body.name.trim(),
         price: Number(body.price) || 0,
         scriptUrl: (body.scriptUrl || '').trim() || '/strategies/' + id + '/script',
+        description: body.description?.trim() || null,
+        entry: this.normalizeStringList(body.entry),
+        notes: this.normalizeStringList(body.notes),
         scriptCode,
         paramsSchema: normalizeParamsSchema(body.paramsSchema !== undefined ? body.paramsSchema : []),
         isHot: !!body.isHot,
@@ -187,6 +212,9 @@ export class AdminService {
       name?: string;
       price?: number;
       scriptUrl?: string;
+      description?: string | null;
+      entry?: unknown;
+      notes?: unknown;
       scriptCode?: string | null;
       paramsSchema?: unknown;
       isHot?: boolean;
@@ -199,6 +227,9 @@ export class AdminService {
     if (body.name !== undefined) data.name = body.name.trim();
     if (body.price !== undefined) data.price = Number(body.price);
     if (body.scriptUrl !== undefined) data.scriptUrl = body.scriptUrl.trim();
+    if (body.description !== undefined) data.description = body.description === null ? null : body.description.trim() || null;
+    if (body.entry !== undefined) data.entry = this.normalizeStringList(body.entry);
+    if (body.notes !== undefined) data.notes = this.normalizeStringList(body.notes);
     if (body.scriptCode !== undefined) data.scriptCode = body.scriptCode === null || body.scriptCode === '' ? null : String(body.scriptCode).trim() || null;
     if (body.paramsSchema !== undefined) data.paramsSchema = normalizeParamsSchema(body.paramsSchema);
     if (body.isHot !== undefined) data.isHot = !!body.isHot;
