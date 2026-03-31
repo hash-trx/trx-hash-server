@@ -76,6 +76,7 @@
         <button type="button" data-tab="strategies" onclick="switchTab('strategies')">策略</button>
         <button type="button" data-tab="staking" onclick="switchTab('staking')">注码方案</button>
         <button type="button" data-tab="market" onclick="switchTab('market')">市场</button>
+        <button type="button" data-tab="config" onclick="switchTab('config')">系统配置</button>
         <button type="button" data-tab="feedback" onclick="switchTab('feedback')">在线留言</button>
         <button type="button" data-tab="admins" onclick="switchTab('admins')">管理员</button>
       </div>
@@ -261,6 +262,24 @@
         </div>
       </div>
 
+      <div id="tab-config" class="card hidden">
+        <h2>系统配置</h2>
+        <p class="muted" style="font-size:13px;margin:-4px 0 12px;line-height:1.45;">
+          这里的配置会影响客户端「激活」页面展示与后端链上校验（手动 txid 激活 + 扫链兜底）。
+        </p>
+        <div class="row">
+          <div style="flex:1;min-width:220px;">
+            <label>激活金额(TRX)</label>
+            <input id="cfgActivationAmount" type="number" step="0.01" />
+          </div>
+          <div class="row" style="align-self:flex-end;">
+            <button type="button" onclick="loadSystemConfig()">刷新</button>
+            <button type="button" onclick="saveSystemConfig()">保存</button>
+          </div>
+        </div>
+        <p id="cfgMsg" class="muted" style="font-size:12px;"></p>
+      </div>
+
       <div id="tab-feedback" class="card hidden">
         <h2>在线留言</h2>
         <p class="muted" style="font-size:13px;margin:-4px 0 12px;">客户端「在线反馈」提交的留言会出现在此列表，可筛选状态、查看全文并备注。</p>
@@ -404,13 +423,14 @@
 
     function switchTab(name) {
       document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-      ['users', 'strategies', 'staking', 'market', 'feedback', 'admins'].forEach(t => {
+      ['users', 'strategies', 'staking', 'market', 'config', 'feedback', 'admins'].forEach(t => {
         document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
       });
       if (name === 'users') loadUsers();
       if (name === 'strategies') loadStrategies();
       if (name === 'staking') loadStakingPresets();
       if (name === 'market') loadBankers();
+      if (name === 'config') loadSystemConfig();
       if (name === 'feedback') loadFeedback();
       if (name === 'admins') loadAdmins();
     }
@@ -587,6 +607,33 @@
       document.getElementById('stratEdit').classList.add('hidden');
       editingStratId = null;
       loadStrategies();
+    }
+
+    async function loadSystemConfig() {
+      const j = await api('/admin/config');
+      const msg = document.getElementById('cfgMsg');
+      if (!j || !j.ok) {
+        msg.textContent = '加载失败';
+        return;
+      }
+      document.getElementById('cfgActivationAmount').value = j.config && j.config.activationAmountTrx != null ? String(j.config.activationAmountTrx) : '480';
+      msg.textContent = '已加载';
+    }
+
+    async function saveSystemConfig() {
+      const msg = document.getElementById('cfgMsg');
+      const v = parseFloat(document.getElementById('cfgActivationAmount').value);
+      if (!isFinite(v) || v <= 0) {
+        alert('激活金额必须为正数');
+        return;
+      }
+      const j = await api('/admin/config', { method: 'PATCH', body: JSON.stringify({ activationAmountTrx: v }) });
+      if (!j || !j.ok) {
+        msg.textContent = '保存失败';
+        return;
+      }
+      document.getElementById('cfgActivationAmount').value = String(j.config.activationAmountTrx);
+      msg.textContent = '已保存';
     }
 
     let editingStakingId = null;

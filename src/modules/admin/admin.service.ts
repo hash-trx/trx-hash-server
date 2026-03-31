@@ -45,6 +45,31 @@ function normalizeParamsSchema(input: unknown): Prisma.InputJsonValue {
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // ---------- 系统配置（SystemConfig）----------
+  async getSystemConfig() {
+    const row = await this.prisma.systemConfig.findUnique({ where: { key: 'activation' } });
+    const v = (row?.value as any) ?? {};
+    const amt = Number(v?.amountTrx ?? 480);
+    const activationAmountTrx = Number.isFinite(amt) && amt > 0 ? amt : 480;
+    return { ok: true, config: { activationAmountTrx } };
+  }
+
+  async updateSystemConfig(body: { activationAmountTrx?: number }) {
+    if (body.activationAmountTrx !== undefined) {
+      const amt = Number(body.activationAmountTrx);
+      if (!Number.isFinite(amt) || amt <= 0) {
+        throw new BadRequestException('activationAmountTrx 必须为正数');
+      }
+      const fixed = Math.round(amt * 100) / 100;
+      await this.prisma.systemConfig.upsert({
+        where: { key: 'activation' },
+        create: { key: 'activation', value: { amountTrx: fixed } as any },
+        update: { value: { amountTrx: fixed } as any },
+      });
+    }
+    return this.getSystemConfig();
+  }
+
   // ---------- 用户 ----------
   async listUsers(pageRaw?: number, pageSizeRaw?: number, q?: string) {
     const page = Math.max(1, Math.floor(Number(pageRaw) || 1));

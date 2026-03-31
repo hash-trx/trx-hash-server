@@ -13,6 +13,7 @@ import { AdminUsersController } from './admin-users.controller';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 import { FeedbackModule } from '../feedback/feedback.module';
 import { AdminStakingPresetsController } from './admin-staking-presets.controller';
+import { AdminConfigController } from './admin-config.controller';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AdminStakingPresetsController } from './admin-staking-presets.controlle
     AdminStrategiesController,
     AdminMarketController,
     AdminStakingPresetsController,
+    AdminConfigController,
     AdminAdminsController,
     AdminFeedbackController,
   ],

@@ -156,9 +156,12 @@ export class AuthService {
 
       const payAddress = process.env.SUB_ADDRESS?.trim();
       if (!payAddress) return null;
+      const cfg = await this.prisma.systemConfig.findUnique({ where: { key: 'activation' } });
+      const amt = Number((cfg?.value as any)?.amountTrx ?? 480);
+      const amountTrx = Number.isFinite(amt) && amt > 0 ? amt : 480;
       return {
         payAddress,
-        amountTrx: 1,
+        amountTrx,
         memoHint: 'Memo 必须与当前登录邮箱完全一致（区分大小写不敏感）。用于把付款绑定到你的账号，防止他人用你的 txid 激活。',
         chain: 'TRON',
       };
@@ -241,6 +244,10 @@ export class AuthService {
 
     const addr = process.env.SUB_ADDRESS?.trim();
     if (!addr) return { ok: false, error: 'SUB_ADDRESS not configured' };
+    const cfg = await this.prisma.systemConfig.findUnique({ where: { key: 'activation' } });
+    const amtTrx = Number((cfg?.value as any)?.amountTrx ?? 480);
+    const amountTrx = Number.isFinite(amtTrx) && amtTrx > 0 ? amtTrx : 480;
+    const expectedSun = Math.floor(amountTrx * 1e6);
 
     const f = await this.fetchTxById(txid);
     if (!f.ok) return f;
@@ -271,7 +278,7 @@ export class AuthService {
     if (actualToHex !== expectedToHex) return { ok: false, error: '收款地址不匹配' };
 
     const amount = Number(v.amount ?? 0);
-    if (amount !== 1 * 1e6) return { ok: false, error: '金额不匹配（需精确 1 TRX）' };
+    if (amount !== expectedSun) return { ok: false, error: `金额不匹配（需精确 ${amountTrx} TRX）` };
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return { ok: false, error: '用户不存在' };

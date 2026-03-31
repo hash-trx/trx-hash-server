@@ -141,3 +141,12 @@ model Feedback {
   @@index([createdAt(sort: Desc)])
   @@map("feedback")
 }
+
+/// 系统配置（后台可改），用于订阅激活等全局参数
+model SystemConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_config")
+}

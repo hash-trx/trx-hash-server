@@ -9,7 +9,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { TronWeb } from 'tronweb';
 
 const DEFAULT_FULL_HOST = 'http://3.225.171.164:8090';
-const ACTIVATION_AMOUNT_SUN = 1 * 1e6;
 
 type TronGridTx = {
   txID?: string;
@@ -27,6 +26,17 @@ type TronGridTx = {
 
 @Injectable()
 export class CronService {
+  private async getActivationAmountSun(): Promise<number> {
+    try {
+      const row = await this.prisma.systemConfig.findUnique({ where: { key: 'activation' } });
+      const amt = Number((row?.value as any)?.amountTrx ?? 480);
+      const amountTrx = Number.isFinite(amt) && amt > 0 ? amt : 480;
+      return Math.floor(amountTrx * 1e6);
+    } catch {
+      return 480 * 1e6;
+    }
+  }
+
   private readonly logger = new Logger(CronService.name);
   private tronWeb: TronWeb;
   private warnedReadUnsupported = false;
@@ -93,6 +103,7 @@ export class CronService {
   async checkActivationPayments() {
     const addr = process.env.SUB_ADDRESS?.trim();
     if (!addr) return;
+    const activationAmountSun = await this.getActivationAmountSun();
 
     const list = await this.fetchAccountTransactions(addr);
 
@@ -107,7 +118,7 @@ export class CronService {
       if (toHex !== subHex) continue;
 
       if (now - parsed.ts > 24 * 60 * 60 * 1000) continue;
-      if (parsed.amount !== ACTIVATION_AMOUNT_SUN) continue;
+      if (parsed.amount !== activationAmountSun) continue;
 
       const email = parsed.memo.trim().toLowerCase();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
