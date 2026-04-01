@@ -161,6 +161,10 @@ export class StrategyService implements OnModuleInit {
     scriptUrl: string;
     isHot: boolean;
     paramsSchema: unknown[];
+    payAddress?: string;
+    payChain?: string;
+    payAmountTrx?: number;
+    payMemoHint?: string;
     description?: string;
     entry?: string[];
     notes?: string[];
@@ -172,7 +176,22 @@ export class StrategyService implements OnModuleInit {
     const r = await this.prisma.strategyMarket.findUnique({ where: { id } });
     if (!r) return null;
     const paramsSchema = Array.isArray(r.paramsSchema as unknown) ? (r.paramsSchema as unknown[]) : [];
-    const base = { id: r.id, name: r.name, price: r.price, scriptUrl: r.scriptUrl, isHot: r.isHot, paramsSchema };
+    const payAddress =
+      r.price > 0 ? (process.env.STRATEGY_PAY_ADDRESS || process.env.SUB_ADDRESS || '').trim() : '';
+    const payMemoHint =
+      r.price > 0
+        ? '转账时 Memo（备注）必须与当前登录邮箱完全一致（不区分大小写），用于将付款绑定到你的账号；未填写或填错将无法通过核验。'
+        : undefined;
+    const payInfo =
+      r.price > 0
+        ? {
+            payChain: 'TRON' as const,
+            payAmountTrx: r.price,
+            payMemoHint,
+            ...(payAddress ? { payAddress } : {}),
+          }
+        : {};
+    const base = { id: r.id, name: r.name, price: r.price, scriptUrl: r.scriptUrl, isHot: r.isHot, paramsSchema, ...payInfo };
     const meta =
       id === 1
         ? {
@@ -204,6 +223,22 @@ export class StrategyService implements OnModuleInit {
     const used = usedMap.get(id) ?? 0;
     const remaining = r.price > 0 ? Math.max(0, purchased - used) : 999999;
     return { ...base, ...mergedMeta, userPurchased: purchased, userUsed: used, userRemaining: remaining };
+  }
+
+  private parseTrxTransferMemo(data: string | undefined): string {
+    if (typeof data !== 'string' || data.length === 0) return '';
+    try {
+      return Buffer.from(data, 'hex').toString('utf8').replace(/\0/g, '').trim();
+    } catch {
+      return '';
+    }
+  }
+
+  private resolveTransferMemo(tx: any, valueData: string | undefined): string {
+    const a = this.parseTrxTransferMemo(valueData);
+    if (a) return a;
+    const rd = tx?.raw_data as { data?: string } | undefined;
+    return this.parseTrxTransferMemo(rd?.data);
   }
 
   private async fetchTxById(txid: string): Promise<{ ok: true; tx: any } | { ok: false; error: string }> {
@@ -260,6 +295,25 @@ export class StrategyService implements OnModuleInit {
     const amount = Number(v.amount ?? 0);
     const expected = Math.floor(item.price * 1e6);
     if (amount !== expected) return { ok: false, error: `金额不匹配（需精确 ${item.price} TRX）` };
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return { ok: false, error: '用户不存在' };
+    const memoOnChain = this.resolveTransferMemo(tx, v.data as string | undefined).toLowerCase();
+    const emailExpected = (user.email || '').trim().toLowerCase();
+    if (!emailExpected) return { ok: false, error: '账号未绑定邮箱，无法校验 Memo' };
+    if (!memoOnChain) {
+      return {
+        ok: false,
+        error:
+          '链上该笔转账的 Memo（备注）为空。请在转账时填写与当前登录邮箱完全一致的 Memo，再重新提交 TxID；部分钱包需在「备注」中填写才会写入链上。',
+      };
+    }
+    if (memoOnChain !== emailExpected) {
+      return {
+        ok: false,
+        error: `Memo 与当前登录邮箱不一致。链上备注为「${memoOnChain.slice(0, 80)}${memoOnChain.length > 80 ? '…' : ''}」，当前账号邮箱为「${emailExpected}」。`,
+      };
+    }
 
     await this.prisma.strategyPurchase.create({
       data: {
