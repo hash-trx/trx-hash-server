@@ -7,10 +7,9 @@ const AUTO_MATCH_FIELD = {
   type: 'select',
   default: 'yes',
   options: [
-    { label: '是（引擎按输赢改转账金额）', value: 'yes' },
+    { label: '是（引擎自动按单双/大小匹配金额）', value: 'yes' },
     { label: '否（按策略脚本填写的金额）', value: 'no' },
   ],
-  help: '是：按注码方案与 ladder 计算每笔转账；否：使用策略脚本下注金额，不覆盖、不推进档位。',
 }
 
 @Controller('staking-presets')
@@ -27,47 +26,54 @@ export class StakingPresetsController implements OnModuleInit {
     }> = [
       {
         kind: 'flat',
-        name: '平推（同额）',
-        paramsSchema: [AUTO_MATCH_FIELD, { key: 'ladder', label: '投注金额(TRX)', type: 'text', default: '10', help: '平推：只需一个金额，每局用同额下注。' }],
+        name: '平推（每笔交易的金额始终保持一致）',
+        paramsSchema: [AUTO_MATCH_FIELD, { key: 'ladder', label: '投注金额(TRX)', type: 'text', default: '10', help: '填写一个金额即可。' }],
         enabled: true,
         sortOrder: 10,
       },
       {
         kind: 'martingale_reset',
-        name: '倍投（胜复位）',
+        name: '胜复位（亏损时按倍数放大下注金额，盈利后立即回到初始金额）',
         paramsSchema: [
           AUTO_MATCH_FIELD,
-          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,40,80', help: '不中 → 序列下一格；中 → 回到第一格（胜复位）' },
+          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,40,80', help: '金额用逗号或换行分隔。' },
         ],
         enabled: true,
         sortOrder: 20,
       },
       {
         kind: 'fibonacci_back2',
-        name: '斐波那契（胜回退2格）',
+        name: '斐波那契（亏损递增一个档位下注，盈利则回退 2 个档位）',
         paramsSchema: [
           AUTO_MATCH_FIELD,
-          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,10,20,30,50,80', help: '不中 → 序列下一格；中 → 回退 2 格（最低回到第一格）' },
+          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,10,20,30,50,80', help: '金额用逗号或换行分隔。' },
         ],
         enabled: true,
         sortOrder: 30,
       },
       {
         kind: 'win_streak_reset',
-        name: '连赢复位（连赢K次回第一档）',
+        name: '连赢复位（连续盈利达到设定次数后，自动回到初始下注档位）',
         paramsSchema: [
           AUTO_MATCH_FIELD,
-          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,30,40', help: '不中 → 序列下一格；连赢 2 次 → 回到第一格（默认 K=2，后续如需可上云可配）' },
+          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,30,40', help: '金额用逗号或换行分隔。' },
         ],
         enabled: true,
         sortOrder: 40,
       },
       {
         kind: 'round3_ruleset1',
-        name: '三把内结算（进2/退1/留档）',
+        name: '超级缆（首档与升档后规则不同，每轮 3 笔结算）',
         paramsSchema: [
           AUTO_MATCH_FIELD,
-          { key: 'ladder', label: '注码序列（逗号/换行）', type: 'text', default: '10,20,30,50', help: '每轮最多3把：不在首档且第1把赢→退1；否则按该轮3把胜负决定进2/进1/退1/不动（规则已内置）' },
+          {
+            key: 'ladder',
+            label: '注码序列（逗号/换行）',
+            type: 'text',
+            default: '10,20,30,50',
+            help:
+              '首档(index=0)：3赢降2、2赢降1、1赢不变、0赢升2。非首档：首笔赢则降1；首笔输则三笔齐后——0赢升2、2赢降1、1赢(两输)升1。',
+          },
         ],
         enabled: true,
         sortOrder: 50,
