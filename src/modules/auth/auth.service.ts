@@ -9,13 +9,18 @@ import { hashPassword, verifyPassword } from './password.util';
 
 const DEFAULT_FULL_HOST = 'http://3.225.171.164:8090';
 
-function pickFirstTronGridKey(): string | undefined {
+/** 登录/状态接口下发给客户端的 Key：从 TRONGRID_API_KEYS 池里轮换，避免所有用户永远共用第一个 Key */
+let tronGridKeyRound = 0;
+function pickRotatingTronGridKeyForClient(): string | undefined {
   const raw = process.env.TRONGRID_API_KEYS ?? '';
   const keys = raw
     .split(/[,;\n\r]+/)
     .map((x) => x.trim())
     .filter(Boolean);
-  return keys[0];
+  if (!keys.length) return undefined;
+  const k = keys[tronGridKeyRound % keys.length]!;
+  tronGridKeyRound++;
+  return k;
 }
 
 export interface LoginResult {
@@ -94,7 +99,7 @@ export class AuthService {
 
     const payload = { sub: String(user.id), email: user.email };
     const token = this.jwt.sign(payload);
-    const tronKey = pickFirstTronGridKey();
+    const tronKey = pickRotatingTronGridKeyForClient();
     return {
       userId: String(user.id),
       token,
@@ -131,7 +136,7 @@ export class AuthService {
 
       const now = new Date();
       const isExpired = user.subExpire ? user.subExpire < now : true;
-      const tronKey = pickFirstTronGridKey();
+      const tronKey = pickRotatingTronGridKeyForClient();
 
       return {
         userId: String(user.id),
