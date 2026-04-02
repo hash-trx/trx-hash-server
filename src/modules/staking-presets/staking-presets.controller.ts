@@ -80,11 +80,21 @@ export class StakingPresetsController implements OnModuleInit {
       },
       {
         kind: 'bias_boost10_net3',
-        name: '偏差加注（净赢未达 3 时，每轮结算后下注金额 +10%）',
+        name: '偏差加注（净赢未达阈值时，按次数阶梯加注比例）',
         paramsSchema: [
           AUTO_MATCH_FIELD,
           { key: 'ladder', label: '投注金额(TRX)', type: 'text', default: '10', help: '填写一个金额即可。' },
           { key: 'boostPct', label: '加注比例', type: 'number', default: 0.1, min: 0, max: 1, step: 0.01 },
+          {
+            key: 'boostEverySettles',
+            label: '每结算几次加注一次',
+            type: 'number',
+            default: 1,
+            min: 1,
+            max: 100,
+            step: 1,
+            help: '净赢未达多赢阈值时，累计满此次数才把下一笔基数乘上 (1+加注比例)。填 1 等价于每笔结算后都加注。',
+          },
           { key: 'multiWinNet', label: '多赢阈值（净赢）', type: 'number', default: 3, min: 1, max: 20, step: 1 },
           { key: 'maxBet', label: '单笔上限(TRX)', type: 'number', default: 0, min: 0, max: 100000, step: 1 },
         ],
