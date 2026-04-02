@@ -89,11 +89,11 @@ export class StakingPresetsController implements OnModuleInit {
             key: 'boostEverySettles',
             label: '每结算几次加注一次',
             type: 'number',
-            default: 1,
+            default: 3,
             min: 1,
             max: 100,
             step: 1,
-            help: '净赢未达多赢阈值时，累计满此次数才可能加注（还须满足「未连赢」条件，为 0 则只看次数）。',
+            help: '净赢未达多赢阈值时，累计满此次数才可能加注。「多少把未连赢」为 0 时不限。填 1 表示每笔结算后都可能加注。',
           },
           {
             key: 'winStreakNeed',
