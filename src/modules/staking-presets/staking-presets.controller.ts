@@ -80,7 +80,7 @@ export class StakingPresetsController implements OnModuleInit {
       },
       {
         kind: 'bias_boost10_net3',
-        name: '递增加注（每满 N 把结算按比例加码，可选净赢门槛）',
+        name: '递增加注（下注多少把后递增）',
         paramsSchema: [
           AUTO_MATCH_FIELD,
           { key: 'ladder', label: '投注金额(TRX)', type: 'text', default: '10', help: '填写一个金额即可。' },
@@ -93,37 +93,7 @@ export class StakingPresetsController implements OnModuleInit {
             min: 1,
             max: 100,
             step: 1,
-            help: '每满此次数结算且通过连赢条件后，基数乘 (1+加注比例)。',
-          },
-          {
-            key: 'winStreakNeed',
-            label: '连续赢几把算连赢',
-            type: 'number',
-            default: 2,
-            min: 2,
-            max: 20,
-            step: 1,
-            help: '用于「多少把未连赢才加注」。',
-          },
-          {
-            key: 'boostMinWithoutWinStreak',
-            label: '多少把未连赢才加注',
-            type: 'number',
-            default: 0,
-            min: 0,
-            max: 200,
-            step: 1,
-            help: '0=不限制。',
-          },
-          {
-            key: 'multiWinNet',
-            label: '净赢门槛（可选）',
-            type: 'number',
-            default: 0,
-            min: 0,
-            max: 20,
-            step: 1,
-            help: '0=不按净赢限制；≥1 时仅当(赢−输)<此值才递增。',
+            help: '每满此次数的结算（赢/输都算一把）后，把基数乘 (1+加注比例)。',
           },
           { key: 'maxBet', label: '单笔上限(TRX)', type: 'number', default: 0, min: 0, max: 100000, step: 1 },
         ],
@@ -138,6 +108,17 @@ export class StakingPresetsController implements OnModuleInit {
         await this.prisma.stakingPreset.create({
           data: {
             kind: d.kind,
+            name: d.name,
+            paramsSchema: d.paramsSchema,
+            enabled: d.enabled,
+            sortOrder: d.sortOrder,
+          },
+        })
+      } else if (d.kind === 'bias_boost10_net3') {
+        // bias_boost10_net3：修正为纯「下注次数递增」后，需同步更新已有记录的 paramsSchema
+        await this.prisma.stakingPreset.update({
+          where: { id: exists.id },
+          data: {
             name: d.name,
             paramsSchema: d.paramsSchema,
             enabled: d.enabled,
